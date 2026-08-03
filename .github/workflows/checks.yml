@@ -1,0 +1,42 @@
+name: Проверки
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  checks:
+    name: Типы, линт, тесты, сборка
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      - name: Установка зависимостей
+        run: npm ci
+
+      - name: Проверка типов
+        run: npx tsc -b --noEmit
+
+      - name: Линт
+        run: npm run lint
+
+      # Регрессия эталонов A, B, C и сторожей граничных входов.
+      # Если расчёт разошёлся с книгой — дальше не идём.
+      - name: Тесты
+        run: npx vitest run
+
+      - name: Сборка
+        run: npm run build
+        env:
+          PUBLIC_BASE: /${{ github.event.repository.name }}/

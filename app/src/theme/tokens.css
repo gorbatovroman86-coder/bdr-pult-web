@@ -1,0 +1,109 @@
+/* Токены пульта БДР.
+   Основа наследуется от пульта МЭЗ Бийск — семейное сходство.
+   Правило цвета: ТЁПЛОЕ = вещество, ХОЛОДНОЕ = деньги и решения. */
+
+:root {
+  /* Основа */
+  --ground: #eae6dc;
+  --panel: #fcfaf5;
+  --panel2: #f2eee4;
+  --panelhd: #23271f;
+  --ink: #24281f;
+  --ink2: #62665a;
+  --ink3: #979a8c;
+  --line: #dbd4c5;
+  --line2: #e8e2d5;
+
+  /* Вещество — только там, где изображается масса */
+  --kernel: #d9b45e;
+  --semi: #be9440;
+  --cat3: #8e6b2c;
+  --oil: #c9861a;
+  --meal: #7a5c3a;
+  --husk: #a9a294;
+  --loss: #cfc8b8;
+
+  /* Деньги и решения */
+  --decide: #3f687d;
+  --decide-bg: #e2eaee;
+  --alert: #b8493a;
+  --alert-bg: #f4e2de;
+  --ok: #43764e;
+  --ok-bg: #e3ece4;
+
+  --r: 13px;
+  --r-sm: 7px;
+  --sh: 0 1px 2px rgba(36, 40, 31, 0.04), 0 12px 30px -18px rgba(36, 40, 31, 0.16);
+
+  --font-text: 'Golos Text', system-ui, -apple-system, sans-serif;
+  --font-num: 'IBM Plex Mono', ui-monospace, monospace;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--font-text);
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Все числа — моноширинные, цифры стоят столбиком. */
+.num {
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+.unit {
+  color: var(--ink3);
+  font-family: var(--font-text);
+  font-weight: 500;
+  font-size: 0.82em;
+  margin-left: 0.28em;
+  letter-spacing: 0;
+  /* «тыс.₽/мес» не должно ломаться по слэшу посреди слова */
+  white-space: nowrap;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  margin: 0;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid var(--decide);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}
