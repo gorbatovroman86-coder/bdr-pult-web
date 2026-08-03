@@ -8,7 +8,9 @@ import { RAW_LABEL } from '../domain/types'
 import { kRub, pct, rubPerTon, signed, tons } from '../domain/units'
 import { Ribbon } from '../components/Ribbon'
 import { Panel, Tag, WarnLine } from '../components/bits'
-import { ASSUMPTIONS, COMPUTED, type ComputedModel } from '../data/calc'
+import { useStore } from '../state/store'
+import { ranked, type ComputedModel } from '../state/compute'
+import { ASSUMPTIONS } from '../data/notes'
 
 type SortKey = 'net' | 'perTon' | 'margin'
 
@@ -20,16 +22,8 @@ const SORTS: { key: SortKey; label: string }[] = [
 
 export function Comparison({ onOpen }: { onOpen: (id: string) => void }) {
   const [sort, setSort] = useState<SortKey>('net')
-
-  const rows = useMemo(() => {
-    const pick = (c: ComputedModel) =>
-      sort === 'net'
-        ? c.result.netResult
-        : sort === 'perTon'
-          ? c.result.netPerRawTon
-          : (c.result.margin ?? -Infinity)
-    return [...COMPUTED].sort((a, b) => pick(b) - pick(a))
-  }, [sort])
+  const { computed } = useStore()
+  const rows: ComputedModel[] = useMemo(() => ranked(computed, sort), [computed, sort])
 
   const live = rows.filter((c) => c.blockers.length === 0)
   const best = live[0]

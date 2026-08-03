@@ -1343,3 +1343,191 @@
 .fdet-wrap {
   margin-top: 16px;
 }
+
+/* ───────────────────────────── Поля ввода параметров */
+
+.fldrow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px 22px;
+  align-items: flex-start;
+}
+
+.fld {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.fld--md {
+  flex: 0 1 230px;
+}
+
+.fld--sm {
+  flex: 0 0 auto;
+  gap: 1px;
+}
+
+.fld-lbl {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ink3);
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.fld--sm .fld-lbl:empty {
+  display: none;
+}
+
+.fld-reset {
+  border: none;
+  background: none;
+  color: var(--decide);
+  cursor: pointer;
+  padding: 0 2px;
+  font-size: 13px;
+  line-height: 1;
+}
+
+.fld-inp,
+.fld-ro {
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: #fff;
+  padding: 7px 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  width: 100%;
+  min-width: 96px;
+  text-align: right;
+}
+
+.fld--sm .fld-inp,
+.fld--sm .fld-ro {
+  padding: 4px 7px;
+  font-size: 12.5px;
+  min-width: 84px;
+  width: 96px;
+}
+
+.fld-ro {
+  background: var(--panel2);
+  display: block;
+}
+
+.fld-inp:focus {
+  border-color: var(--decide);
+  outline: none;
+  box-shadow: 0 0 0 2px var(--decide-bg);
+}
+
+.fld-inp--bad {
+  border-color: var(--alert);
+  background: var(--alert-bg);
+}
+
+.fld--changed .fld-inp,
+.fld--changed .fld-ro {
+  border-color: var(--decide);
+  background: var(--decide-bg);
+}
+
+.fld-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 10.5px;
+}
+
+.fld-unit {
+  color: var(--ink3);
+  font-weight: 600;
+}
+
+.fld-tag {
+  color: var(--decide);
+  font-weight: 700;
+}
+
+.fld-tag--ro {
+  color: var(--ink3);
+  font-weight: 600;
+}
+
+.fld-src {
+  color: var(--ink3);
+}
+
+.fld-hint {
+  color: var(--ink3);
+  font-size: 10.5px;
+  line-height: 1.4;
+  max-width: 30ch;
+}
+
+.fld-hint--bad {
+  color: var(--alert);
+  font-weight: 600;
+}
+
+/* ───────────────────────────── Свёрнутые настройки */
+
+.settings {
+  background: var(--panel2);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+}
+
+.settings > summary {
+  padding: 13px 18px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--ink2);
+}
+
+.settings[open] > summary {
+  border-bottom: 1px solid var(--line);
+}
+
+.settings-body {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 16px 18px 18px;
+}
+
+/* ───────────────────────────── Ползунки сценариев */
+
+.sl--changed .sl-lbl {
+  color: var(--decide);
+  font-weight: 700;
+}
+
+.sl-badge {
+  margin-left: 7px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--decide-bg);
+  color: var(--decide);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.sl-was {
+  margin-left: 8px;
+  color: var(--ink3);
+  font-size: 11px;
+  font-weight: 500;
+}

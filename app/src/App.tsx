@@ -3,7 +3,7 @@ import { Comparison } from './screens/Comparison'
 import { ModelCard } from './screens/ModelCard'
 import { Rates } from './screens/Rates'
 import { Scenarios } from './screens/Scenarios'
-import { byModelId, CALC_DATE, CALC_MONTH, INPUT } from './data/calc'
+import { StoreProvider, useStore } from './state/store'
 import { dateTime, fxCny, fxUsd, monthName, monthShort } from './domain/units'
 
 type Tab = 'compare' | 'rates' | 'scenarios'
@@ -23,7 +23,8 @@ function readHash(): { tab: Tab; model: string | null } {
   return { tab: 'compare', model: null }
 }
 
-export default function App() {
+function Shell() {
+  const { inputs, computed } = useStore()
   const [route, setRoute] = useState(readHash)
 
   useEffect(() => {
@@ -41,7 +42,7 @@ export default function App() {
   const setTab = (t: Tab) => go(t === 'compare' ? '/' : `/${t}`)
   const setOpenModel = (id: string | null) => go(id ? `/model/${id}` : '/')
 
-  const model = openModel ? byModelId(openModel) : undefined
+  const model = openModel ? computed.models.find((m) => m.meta.id === openModel) : undefined
 
   return (
     <div className="shell">
@@ -52,31 +53,31 @@ export default function App() {
           </span>
           <div>
             <h1 className="hdr-title">Сравнение режимов работы завода</h1>
-            <p className="hdr-sub">ядро ↔ масло · месячная база · {monthShort(CALC_MONTH)}</p>
+            <p className="hdr-sub">ядро ↔ масло · месячная база · {monthShort(inputs.calcMonth)}</p>
           </div>
         </div>
 
         <dl className="hdr-meta">
           <div>
             <dt>расчёт</dt>
-            <dd className="num">{dateTime(CALC_DATE)}</dd>
+            <dd className="num">{dateTime(new Date().toISOString())}</dd>
           </div>
           <div>
             <dt>CNY / RUB</dt>
             <dd className="num">
-              {fxCny(INPUT.fx.cny.value)} <span className="hdr-src">🔄 {INPUT.fx.cny.note}</span>
+              {fxCny(inputs.fxCny.value ?? 0)} <span className="hdr-src">{inputs.fxCny.origin === 'auto' ? '🔄 Мосбиржа' : '✋ вручную'}</span>
             </dd>
           </div>
           <div>
             <dt>USD / RUB</dt>
             <dd className="num">
-              {fxUsd(INPUT.fx.usd.value)} <span className="hdr-src">🔄 {INPUT.fx.usd.note}</span>
+              {fxUsd(inputs.fxUsd.value ?? 0)} <span className="hdr-src">{inputs.fxUsd.origin === 'auto' ? '🔄 Мосбиржа' : '✋ вручную'}</span>
             </dd>
           </div>
           <div>
             <dt>пошлины МСХ</dt>
             <dd className="num">
-              {monthName(INPUT.duties.sunOil.month)} <span className="hdr-src">✋ вручную</span>
+              {monthName(inputs.dutySunOil.month ?? '')} <span className="hdr-src">✋ вручную</span>
             </dd>
           </div>
         </dl>
@@ -110,16 +111,25 @@ export default function App() {
 
       <footer className="foot">
         <p>
-          <b>ЭТАП 4.</b> Все показатели считает расчётное ядро — формулы перенесены из БДР
-          с указанием «лист!ячейка» для каждой. Регрессия: 57 тестов, эталоны A, B, C;
-          эталон A сверен со снимком книги по 143 ячейкам, расхождений нет.
+          Все показатели считает расчётное ядро — формулы перенесены из БДР с указанием
+          «лист!ячейка» для каждой. Любая правка входных данных пересчитывает пять моделей
+          немедленно. Регрессия: эталоны A, B, C; эталон A сверен со снимком книги
+          по 143 ячейкам, расхождений нет.
         </p>
         <p className="foot-src">
-          Источник: «БДР (мотивация).xlsx», снимок от 03.08.2026, только чтение. Условия
-          эталона (C): прогнозного дисконта нет, НДС услуг 22 %, курс CNY 11,5000, USD 80,00,
-          пошлины подсолнечника — реконструкция из файла.
+          Источник: «БДР (мотивация).xlsx», снимок от 03.08.2026, только чтение. Базовые
+          значения воспроизводят рабочий эталон; кнопка «Вернуть базовые значения»
+          возвращает ровно его.
         </p>
       </footer>
     </div>
+  )
+}
+
+export default function App() {
+  return (
+    <StoreProvider>
+      <Shell />
+    </StoreProvider>
   )
 }

@@ -7,7 +7,10 @@ import { describe, expect, it } from 'vitest'
 import { calcMonth, SETTINGS_AS_IN_EXCEL, SETTINGS_WORKING, type NetPrices } from '../src/domain/engine'
 import { excelForecastDiscount, excelPrices, netback, contractToQuote, CZCE_DEFAULTS } from '../src/domain/pricing'
 import { chooseBasis, type BasisCandidate } from '../src/domain/basis'
-import { byId } from '../src/data/models'
+import { toEngineParams } from '../src/state/compute'
+import { BASE } from '../src/state/inputs'
+
+const byId = (id: string) => ({ params: toEngineParams(id as 'M1', BASE) })
 import { REF_A, REF_B, REF_C, REF_C_NET_PRICES, TOL_MARGIN, TOL_MONEY } from '../src/data/references'
 
 const CNY = 11.5
