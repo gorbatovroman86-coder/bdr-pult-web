@@ -1,0 +1,33 @@
+# Блок для /root/n8n/Caddyfile — вставить ВНУТРЬ существующего блока {$DOMAIN},
+# ПЕРЕД завершающим `handle { reverse_proxy n8n:5678 }`.
+#
+# Сделан по образцу whisper: путевой префикс на существующем домене, а не
+# поддомен. Поддомен потребовал бы DNS-записи и выпуска нового сертификата;
+# префикс работает на уже действующем сертификате Let's Encrypt.
+#
+# ЗАМЕНИТЬ ПЕРЕД ВСТАВКОЙ:
+#   ПРЕФИКС     — случайная строка, как у whisper (см. шаг 1 инструкции)
+#   ПОЛЬЗОВАТЕЛЬ — любое имя, например bdr
+#   ХЕШ         — вывод `caddy hash-password` (шаг 2). НЕ пароль, а хеш.
+
+handle_path /ПРЕФИКС/* {
+    # Предварительный запрос браузера (CORS preflight) обязан проходить
+    # ДО basic auth: иначе браузер получит 401 на OPTIONS и настоящий
+    # запрос не отправит вовсе.
+    @preflight method OPTIONS
+    handle @preflight {
+        header Access-Control-Allow-Origin "https://gorbatovroman86-coder.github.io"
+        header Access-Control-Allow-Methods "GET, PUT, POST, DELETE, OPTIONS"
+        header Access-Control-Allow-Headers "Authorization, Content-Type"
+        header Access-Control-Max-Age "86400"
+        respond 204
+    }
+
+    # Единственная защита данных. Без неё набор параметров и журнал
+    # открыты всем, кто узнал адрес.
+    basic_auth {
+        ПОЛЬЗОВАТЕЛЬ ХЕШ
+    }
+
+    reverse_proxy 172.18.0.1:18791
+}

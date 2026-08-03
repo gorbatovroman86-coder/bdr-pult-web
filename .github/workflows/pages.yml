@@ -28,7 +28,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: npm
           cache-dependency-path: app/package-lock.json
 
@@ -43,12 +43,16 @@ jobs:
 
       # Если эталоны разошлись — сайт не обновляется.
       - name: Тесты
-        run: npx vitest run
+        run: npm test
 
       - name: Сборка
         run: npm run build
         env:
           PUBLIC_BASE: /${{ github.event.repository.name }}/
+          # Адрес хранилища в репозитории не хранится — только имя секрета.
+          # Секрет не задан → сборка выходит с пустым адресом, и пульт
+          # работает локально, пока адрес не введут в самом пульте.
+          PUBLIC_API_BASE: ${{ secrets.PUBLIC_API_BASE }}
 
       - uses: actions/configure-pages@v5
 

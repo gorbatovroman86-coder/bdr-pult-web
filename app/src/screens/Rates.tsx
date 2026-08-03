@@ -9,6 +9,8 @@ import { Field } from '../components/Field'
 import { OriginMark, Panel, Tag } from '../components/bits'
 import { PayrollBlock } from '../components/PayrollBlock'
 import { Transfer } from '../components/Transfer'
+import { Connection } from '../components/Sync'
+import { FxPanel } from '../components/FxRates'
 import type { ContractKey } from '../state/inputs'
 
 const MONTHS = ['2026-06', '2026-07', '2026-08', '2026-09', '2026-10']
@@ -133,30 +135,7 @@ export function Rates() {
         </p>
       </Panel>
 
-      <Panel title="Курсы валют">
-        <div className="fldrow">
-          <Field
-            path="fxCny.value"
-            label="CNY / RUB"
-            digits={4}
-            min={5}
-            max={25}
-            source={inputs.fxCny.origin === 'auto' ? '🔄 Мосбиржа' : '✋ подставлено вручную'}
-            hint="Мосбиржа в торговые часы, ЦБ РФ в выходные."
-          />
-          <Field
-            path="fxUsd.value"
-            label="USD / RUB"
-            min={40}
-            max={200}
-            source={inputs.fxUsd.origin === 'auto' ? '🔄 Мосбиржа' : '✋ подставлено вручную'}
-            hint="Нужен только для иранского базиса M1."
-          />
-        </div>
-        <p className="note">
-          Подставленный вручную курс помечается и за официальный не выдаётся.
-        </p>
-      </Panel>
+      <FxPanel />
 
       <Panel
         title="Контрактные цены и логистика"
@@ -255,6 +234,8 @@ export function Rates() {
           котировки CZCE и ручной ввод.
         </p>
       </Panel>
+
+      <Connection />
 
       <Transfer />
 

@@ -18,7 +18,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: npm
           cache-dependency-path: app/package-lock.json
 
@@ -31,10 +31,10 @@ jobs:
       - name: Линт
         run: npm run lint
 
-      # Регрессия эталонов A, B, C и сторожей граничных входов.
-      # Если расчёт разошёлся с книгой — дальше не идём.
+      # Регрессия эталонов A, B, C, сторожа граничных входов, серверные
+      # маршруты на моках и автотесты экранов. Разошлось — дальше не идём.
       - name: Тесты
-        run: npx vitest run
+        run: npm test
 
       - name: Сборка
         run: npm run build

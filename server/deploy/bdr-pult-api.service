@@ -1,0 +1,43 @@
+[Unit]
+Description=Пульт БДР — хранилище параметров и журнала расчётов
+Documentation=file:/root/bdr-pult-api/README.md
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/root/bdr-pult-api
+ExecStart=/usr/bin/node /root/bdr-pult-api/src/server.mjs
+
+# Привязка к адресу docker-моста, а НЕ к 0.0.0.0.
+# Брандмауэра на машине нет: привязка ко всем интерфейсам открыла бы API
+# в интернет мимо basic auth на caddy. Снаружи сервис доступен только
+# через caddy, который ходит сюда изнутри моста.
+Environment=BDR_HOST=172.18.0.1
+Environment=BDR_PORT=18791
+Environment=BDR_DB=/root/bdr-pult-api/data/bdr.sqlite
+Environment=BDR_ORIGIN=https://gorbatovroman86-coder.github.io
+
+Restart=on-failure
+RestartSec=5
+
+# Журнал сервиса: только факт запроса, время и код ответа.
+# Значений параметров, цен и ставок сервис в лог не пишет.
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=bdr-pult-api
+
+# Сервису нужен ровно один каталог на запись — тот, где лежит база.
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=no
+ReadWritePaths=/root/bdr-pult-api/data
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+MemoryMax=256M
+
+[Install]
+WantedBy=multi-user.target

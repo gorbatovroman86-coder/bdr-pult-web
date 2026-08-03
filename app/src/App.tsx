@@ -2,23 +2,27 @@ import { useEffect, useState } from 'react'
 import { Comparison } from './screens/Comparison'
 import { ModelCard } from './screens/ModelCard'
 import { Rates } from './screens/Rates'
+import { Journal } from './screens/Journal'
 import { Scenarios } from './screens/Scenarios'
 import { StoreProvider, useStore } from './state/store'
+import { ConflictBar, SyncBadge } from './components/Sync'
 import { dateTime, fxCny, fxUsd, monthName, monthShort } from './domain/units'
 
-type Tab = 'compare' | 'rates' | 'scenarios'
+type Tab = 'compare' | 'rates' | 'journal' | 'scenarios'
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'compare', label: 'Сравнение' },
   { id: 'rates', label: 'Ставки и курсы' },
+  { id: 'journal', label: 'Журнал расчётов' },
   { id: 'scenarios', label: 'Сценарии и история' },
 ]
 
-/** Разбор адреса: #/rates · #/scenarios · #/model/M3 */
+/** Разбор адреса: #/rates · #/journal · #/scenarios · #/model/M3 */
 function readHash(): { tab: Tab; model: string | null } {
   const h = window.location.hash.replace(/^#\/?/, '')
   if (h.startsWith('model/')) return { tab: 'compare', model: h.slice(6).toUpperCase() }
   if (h === 'rates') return { tab: 'rates', model: null }
+  if (h === 'journal') return { tab: 'journal', model: null }
   if (h === 'scenarios') return { tab: 'scenarios', model: null }
   return { tab: 'compare', model: null }
 }
@@ -80,8 +84,16 @@ function Shell() {
               {monthName(inputs.dutySunOil.month ?? '')} <span className="hdr-src">✋ вручную</span>
             </dd>
           </div>
+          <div>
+            <dt>хранилище</dt>
+            <dd>
+              <SyncBadge />
+            </dd>
+          </div>
         </dl>
       </header>
+
+      <ConflictBar />
 
       <nav className="tabs" aria-label="Разделы">
         {TABS.map((t) => (
@@ -104,6 +116,8 @@ function Shell() {
           <Comparison onOpen={setOpenModel} />
         ) : tab === 'rates' ? (
           <Rates />
+        ) : tab === 'journal' ? (
+          <Journal />
         ) : (
           <Scenarios />
         )}

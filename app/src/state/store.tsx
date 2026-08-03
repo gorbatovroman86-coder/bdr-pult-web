@@ -14,6 +14,9 @@ import {
 } from './inputs'
 import { computeAll, type Computed } from './compute'
 import { fingerprint } from './transfer'
+import { useServerSync, type SyncApi } from './useSync'
+import { useJournal, type JournalApi } from './useJournal'
+import { useFx, type FxApi } from './useFx'
 import { EMPTY_PAYROLL, loadPayroll, savePayroll, type Payroll } from '../data/payroll'
 
 interface Store {
@@ -27,6 +30,11 @@ interface Store {
   resetField: (path: string) => void
   /** Заменить набор целиком — применение файла параметров. */
   applyInputs: (next: Inputs) => void
+  /**
+   * Подставить значение, полученное автоматически. Отдельно от `set`:
+   * `set` помечает правку как ручную, а подтянутый курс ручным не является.
+   */
+  setAuto: (path: string, value: number, at: string) => void
   /** Список изменённых полей. */
   changed: string[]
   isChangedField: (path: string) => boolean
@@ -39,6 +47,12 @@ interface Store {
   setPayroll: (field: 'project' | 'total', value: number | null) => void
   setPayrollAll: (p: Payroll) => void
   resetPayroll: () => void
+  /** Обмен с хранилищем на сервере: состояние, настройки, разрешение расхождений. */
+  sync: SyncApi
+  /** Журнал расчётов — тоже на сервере. */
+  journal: JournalApi
+  /** Курсы валют, подтянутые сервером. */
+  fx: FxApi
 }
 
 const Ctx = createContext<Store | null>(null)
@@ -108,6 +122,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setInputs(structuredClone(next))
   }, [touch])
 
+  const setAuto = useCallback((path: string, value: number, at: string) => {
+    touch()
+    setInputs((prev) => {
+      let next = setPath(prev, `${path}.value`, value)
+      next = setPath(next, `${path}.origin`, 'auto')
+      return setPath(next, `${path}.at`, at)
+    })
+  }, [touch])
+
   const [payroll, setPayrollState] = useState<Payroll>(loadPayroll)
   useEffect(() => {
     savePayroll(payroll)
@@ -124,14 +147,18 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const isChangedField = useCallback((p: string) => isFieldChanged(inputs, p), [inputs])
   const fp = useMemo(() => fingerprint(inputs), [inputs])
 
+  const sync = useServerSync(inputs, fp, applyInputs, touchedAt)
+  const journal = useJournal(sync.config, inputs, computed, fp)
+  const fx = useFx(sync.config, inputs, setAuto)
+
   const value = useMemo<Store>(
     () => ({
-      inputs, computed, set, resetAll, resetField, applyInputs, changed, isChangedField,
-      fingerprint: fp, touchedAt, payroll, setPayroll, setPayrollAll, resetPayroll,
+      inputs, computed, set, resetAll, resetField, applyInputs, setAuto, changed, isChangedField,
+      fingerprint: fp, touchedAt, payroll, setPayroll, setPayrollAll, resetPayroll, sync, journal, fx,
     }),
     [
-      inputs, computed, set, resetAll, resetField, applyInputs, changed, isChangedField,
-      fp, touchedAt, payroll, setPayroll, setPayrollAll, resetPayroll,
+      inputs, computed, set, resetAll, resetField, applyInputs, setAuto, changed, isChangedField,
+      fp, touchedAt, payroll, setPayroll, setPayrollAll, resetPayroll, sync, journal, fx,
     ],
   )
 
