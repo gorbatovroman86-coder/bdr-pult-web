@@ -22,14 +22,24 @@
   --meal: #7a5c3a;
   --husk: #a9a294;
   --loss: #cfc8b8;
+  --raw: #b7ac93;
 
   /* Деньги и решения */
   --decide: #3f687d;
+  --decide-soft: #7d9db0;
   --decide-bg: #e2eaee;
   --alert: #b8493a;
   --alert-bg: #f4e2de;
   --ok: #43764e;
   --ok-bg: #e3ece4;
+
+  /* Затраты — холодная приглушённая шкала: это деньги, а не вещество.
+     Живут здесь, а не в диаграммах: цвет обязан меняться вместе с темой. */
+  --cost-raw: #8f9a8a;
+  --cost-processing: #a8b0a2;
+  --cost-shipping: #c2c7bc;
+  --cost-interest: #6e8794;
+  --cost-tax: #3f687d;
 
   --r: 13px;
   --r-sm: 7px;

@@ -2233,7 +2233,317 @@
   color: var(--decide);
 }
 
+/* ───────────────────────────── Курсы валют */
+
+.fxrow {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1 1 260px;
+  min-width: 0;
+}
+
+.fxmeta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 11px;
+  background: var(--panel2);
+  border-radius: var(--r-sm);
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--ink2);
+}
+
+.fxmeta-old {
+  color: var(--alert);
+}
+
+.fxmeta-diff {
+  margin-top: 3px;
+  color: var(--alert);
+}
+
+/* ───────────────────────────── Журнал расчётов */
+
+.jrn-picks {
+  white-space: nowrap;
+}
+
+.jrn-pick {
+  display: inline-flex;
+  gap: 3px;
+  align-items: center;
+  margin-left: 7px;
+  font-size: 11.5px;
+  color: var(--ink2);
+  cursor: pointer;
+}
+
+.jrn-pick input {
+  accent-color: var(--decide);
+}
+
+.jrn-up { color: var(--ok); }
+.jrn-down { color: var(--alert); }
+
+.jdyn-svg {
+  display: block;
+  width: 100%;
+  min-width: 560px;
+  height: auto;
+}
+
+.jdyn-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12px;
+}
+
+.jdyn-legend li {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+}
+
+.jdyn-swatch {
+  width: 11px;
+  height: 3px;
+  border-radius: 2px;
+}
+
+/* ───────────────────────────── Состояние обмена с сервером */
+
+.syncb {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  text-align: left;
+}
+
+.syncb-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--ink3);
+  flex: none;
+}
+
+.syncb--online .syncb-dot { background: var(--ok); }
+.syncb--offline .syncb-dot,
+.syncb--auth .syncb-dot { background: var(--alert); }
+.syncb--conflict .syncb-dot { background: var(--alert); }
+.syncb--busy .syncb-dot { background: var(--decide); }
+
+.syncb-body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.syncb-word {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.syncb--offline .syncb-word,
+.syncb--auth .syncb-word,
+.syncb--conflict .syncb-word {
+  color: var(--alert);
+}
+
+.syncb-at {
+  font-size: 10.5px;
+  color: var(--ink3);
+}
+
+/* Расхождение перекрывает содержимое: работать вслепую нельзя. */
+.conflict {
+  margin: 0 0 16px;
+  padding: 14px 16px;
+  background: var(--alert-bg);
+  border: 1px solid var(--alert);
+  border-radius: var(--r);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.conflict-hd {
+  margin-bottom: 12px;
+}
+
+.conflict-cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.conflict-col {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
+  padding: 11px 13px;
+  background: var(--panel);
+  border-radius: var(--r-sm);
+}
+
+.conflict-k {
+  color: var(--ink3);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.conflict-fp {
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.conflict-at {
+  color: var(--ink2);
+  font-size: 11.5px;
+  margin-bottom: 4px;
+}
+
+.conflict-more {
+  margin-top: 10px;
+}
+
+/* ───────────────────────────── Передача параметров файлом */
+
+.xfer {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px;
+  margin-top: 14px;
+  background: var(--line2);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  overflow: hidden;
+}
+
+.xfer-side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 14px 16px;
+  background: var(--panel);
+}
+
+.xfer-h {
+  margin: 0;
+  font-size: 14px;
+}
+
+.xfer-sub {
+  margin: 0;
+  color: var(--ink2);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.xfer-chk {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  font-size: 12.5px;
+  line-height: 1.45;
+  cursor: pointer;
+}
+
+.xfer-chk input {
+  margin: 2px 0 0;
+  accent-color: var(--decide);
+}
+
+.xfer-chk input:disabled {
+  cursor: not-allowed;
+}
+
+.xfer-chk-note {
+  color: var(--ink3);
+}
+
+.xfer-file {
+  width: 100%;
+  font-size: 12.5px;
+  color: var(--ink2);
+}
+
+.btn--go {
+  background: var(--ok);
+  border-color: var(--ok);
+}
+
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.xfer-errs {
+  margin: 0 0 9px;
+  padding-left: 18px;
+}
+
+.xfer-diff {
+  margin-top: 14px;
+  padding: 14px 16px;
+  background: var(--panel2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+}
+
+.xfer-diff-hd {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-bottom: 10px;
+}
+
+.xfer-warn {
+  margin: 0 0 8px;
+  padding: 9px 12px;
+  background: var(--alert-bg);
+  border-radius: var(--r-sm);
+  color: var(--ink);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+/* Старое значение приглушено: глаз должен идти к тому, что встанет. */
+.xfer-from {
+  color: var(--ink3);
+}
+
+.xfer-acts {
+  display: flex;
+  gap: 9px;
+  margin-top: 12px;
+}
+
+/* Отпечаток набора — техническая метка, читается как код, а не как число. */
+.conds-item--fp .conds-v {
+  font-size: 15px;
+  letter-spacing: 0.04em;
+}
+
 @media (max-width: 720px) {
+  .xfer {
+    grid-template-columns: 1fr;
+  }
+
   .rank {
     grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
     gap: 6px;

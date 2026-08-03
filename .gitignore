@@ -30,3 +30,20 @@ credentials*
 !app/src/theme/tokens.css
 
 .DS_Store
+
+# Выгрузки пульта — рабочие файлы, в репозиторий не входят
+bdr-params-*.json
+bdr-journal-*.json
+bdr-journal-*.csv
+
+# База хранилища и всё, что её сопровождает
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+/server/data/
+
+# Адрес сервиса, поддомен, путевой префикс, логин и пароль —
+# в репозиторий не попадают ни при каких условиях
+.env.local
+*.api-base
+server/deploy/*.local
