@@ -9,7 +9,7 @@
 import { useMemo, useState } from 'react'
 import { useStore } from '../state/store'
 import { ranked } from '../state/compute'
-import { fmt, kRub, monthName, pct, rubPerTon, signed, tons } from '../domain/units'
+import { dateTime, fmt, kRub, monthName, pct, rubPerTon, signed, tons } from '../domain/units'
 import { RAW_LABEL } from '../domain/types'
 import { Panel, Tag, WarnLine } from '../components/bits'
 import { BlockedList, RankChart, RankGaps } from '../charts/RankChart'
@@ -35,7 +35,7 @@ const DEEP: { key: Deep; label: string }[] = [
 ]
 
 export function Comparison({ onOpen }: { onOpen: (id: string) => void }) {
-  const { inputs, computed, changed } = useStore()
+  const { inputs, computed, changed, fingerprint, touchedAt } = useStore()
   const [sort, setSort] = useState<SortKey>('net')
   const [deep, setDeep] = useState<Deep>('sankey')
 
@@ -76,6 +76,14 @@ export function Comparison({ onOpen }: { onOpen: (id: string) => void }) {
           <span className="conds-k">параметры</span>
           <span className="conds-v num">{changed.length === 0 ? 'базовые' : `${changed.length} изм.`}</span>
           <span className="conds-s">{changed.length === 0 ? 'рабочий эталон' : 'отличаются от базы'}</span>
+        </div>
+        {/* Отпечаток набора: двое сверяют его за секунду и видят, на одних ли цифрах считали. */}
+        <div className="conds-item conds-item--fp">
+          <span className="conds-k">отпечаток набора</span>
+          <span className="conds-v num">{fingerprint}</span>
+          <span className="conds-s">
+            {touchedAt ? `правка ${dateTime(touchedAt)}` : 'база не менялась'}
+          </span>
         </div>
       </section>
 

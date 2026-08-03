@@ -30,3 +30,8 @@ credentials*
 !app/src/theme/tokens.css
 
 .DS_Store
+
+# Выгрузки пульта — рабочие файлы, в репозиторий не входят
+bdr-params-*.json
+bdr-journal-*.json
+bdr-journal-*.csv

@@ -2233,7 +2233,130 @@
   color: var(--decide);
 }
 
+/* ───────────────────────────── Передача параметров файлом */
+
+.xfer {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px;
+  margin-top: 14px;
+  background: var(--line2);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  overflow: hidden;
+}
+
+.xfer-side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 14px 16px;
+  background: var(--panel);
+}
+
+.xfer-h {
+  margin: 0;
+  font-size: 14px;
+}
+
+.xfer-sub {
+  margin: 0;
+  color: var(--ink2);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.xfer-chk {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  font-size: 12.5px;
+  line-height: 1.45;
+  cursor: pointer;
+}
+
+.xfer-chk input {
+  margin: 2px 0 0;
+  accent-color: var(--decide);
+}
+
+.xfer-chk input:disabled {
+  cursor: not-allowed;
+}
+
+.xfer-chk-note {
+  color: var(--ink3);
+}
+
+.xfer-file {
+  width: 100%;
+  font-size: 12.5px;
+  color: var(--ink2);
+}
+
+.btn--go {
+  background: var(--ok);
+  border-color: var(--ok);
+}
+
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.xfer-errs {
+  margin: 0 0 9px;
+  padding-left: 18px;
+}
+
+.xfer-diff {
+  margin-top: 14px;
+  padding: 14px 16px;
+  background: var(--panel2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+}
+
+.xfer-diff-hd {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-bottom: 10px;
+}
+
+.xfer-warn {
+  margin: 0 0 8px;
+  padding: 9px 12px;
+  background: var(--alert-bg);
+  border-radius: var(--r-sm);
+  color: var(--ink);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+/* Старое значение приглушено: глаз должен идти к тому, что встанет. */
+.xfer-from {
+  color: var(--ink3);
+}
+
+.xfer-acts {
+  display: flex;
+  gap: 9px;
+  margin-top: 12px;
+}
+
+/* Отпечаток набора — техническая метка, читается как код, а не как число. */
+.conds-item--fp .conds-v {
+  font-size: 15px;
+  letter-spacing: 0.04em;
+}
+
 @media (max-width: 720px) {
+  .xfer {
+    grid-template-columns: 1fr;
+  }
+
   .rank {
     grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
     gap: 6px;

@@ -8,6 +8,7 @@ import { fmt, monthName, rubPerTon } from '../domain/units'
 import { Field } from '../components/Field'
 import { OriginMark, Panel, Tag } from '../components/bits'
 import { PayrollBlock } from '../components/PayrollBlock'
+import { Transfer } from '../components/Transfer'
 import type { ContractKey } from '../state/inputs'
 
 const MONTHS = ['2026-06', '2026-07', '2026-08', '2026-09', '2026-10']
@@ -254,6 +255,8 @@ export function Rates() {
           котировки CZCE и ручной ввод.
         </p>
       </Panel>
+
+      <Transfer />
 
       <details className="settings">
         <summary>Настройки расчёта — меняются редко</summary>

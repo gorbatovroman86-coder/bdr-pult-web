@@ -199,6 +199,30 @@ export function clearInputs(): void {
   }
 }
 
+/**
+ * Когда набор параметров меняли в последний раз. Хранится отдельно от `Inputs`:
+ * это отметка о работе с пультом, а не цифра расчёта, и в отличия от базы
+ * она попадать не должна.
+ */
+const KEY_AT = 'bdr-pult:inputs-at:v1'
+
+export function loadTouchedAt(): string | null {
+  try {
+    return localStorage.getItem(KEY_AT)
+  } catch {
+    return null
+  }
+}
+
+export function saveTouchedAt(at: string | null): void {
+  try {
+    if (at === null) localStorage.removeItem(KEY_AT)
+    else localStorage.setItem(KEY_AT, at)
+  } catch {
+    /* приватный режим браузера — живём без отметки */
+  }
+}
+
 export const baseInputs = () => clone(BASE)
 
 // ─────────────────────────────────────────────── Отличия от базы

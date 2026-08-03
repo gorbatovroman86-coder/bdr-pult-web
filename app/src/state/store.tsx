@@ -8,10 +8,12 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import {
-  BASE, baseInputs, changedPaths, clearInputs, isFieldChanged, loadInputs, saveInputs,
+  BASE, baseInputs, changedPaths, clearInputs, isFieldChanged, loadInputs, loadTouchedAt,
+  saveInputs, saveTouchedAt,
   type Inputs,
 } from './inputs'
 import { computeAll, type Computed } from './compute'
+import { fingerprint } from './transfer'
 import { EMPTY_PAYROLL, loadPayroll, savePayroll, type Payroll } from '../data/payroll'
 
 interface Store {
@@ -23,12 +25,19 @@ interface Store {
   resetAll: () => void
   /** Вернуть одно поле к базовому значению. */
   resetField: (path: string) => void
+  /** Заменить набор целиком — применение файла параметров. */
+  applyInputs: (next: Inputs) => void
   /** Список изменённых полей. */
   changed: string[]
   isChangedField: (path: string) => boolean
+  /** Отпечаток действующего набора, 8 знаков: на одних ли цифрах считаем. */
+  fingerprint: string
+  /** Когда набор меняли в последний раз, ISO. `null` — база не тронута. */
+  touchedAt: string | null
   /** ФОТ живёт отдельно: своё хранилище и свой сброс — общий сброс его не трогает. */
   payroll: Payroll
   setPayroll: (field: 'project' | 'total', value: number | null) => void
+  setPayrollAll: (p: Payroll) => void
   resetPayroll: () => void
 }
 
@@ -52,12 +61,20 @@ function getPath(obj: unknown, path: string): unknown {
 
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [inputs, setInputs] = useState<Inputs>(loadInputs)
+  const [touchedAt, setTouchedAt] = useState<string | null>(loadTouchedAt)
 
   useEffect(() => {
     saveInputs(inputs)
   }, [inputs])
 
+  useEffect(() => {
+    saveTouchedAt(touchedAt)
+  }, [touchedAt])
+
+  const touch = useCallback(() => setTouchedAt(new Date().toISOString()), [])
+
   const set = useCallback((path: string, value: number | string | null) => {
+    touch()
     setInputs((prev) => {
       let next = setPath(prev, path, value)
       // Ручная правка помечает происхождение и время — курс перестаёт быть «авто».
@@ -72,16 +89,24 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       }
       return next
     })
-  }, [])
+  }, [touch])
 
   const resetAll = useCallback(() => {
     clearInputs()
     setInputs(baseInputs())
+    setTouchedAt(null)
   }, [])
 
   const resetField = useCallback((path: string) => {
+    touch()
     setInputs((prev) => setPath(prev, path, getPath(BASE, path)))
-  }, [])
+  }, [touch])
+
+  /** Применение файла целиком: набор либо заменяется весь, либо не трогается. */
+  const applyInputs = useCallback((next: Inputs) => {
+    touch()
+    setInputs(structuredClone(next))
+  }, [touch])
 
   const [payroll, setPayrollState] = useState<Payroll>(loadPayroll)
   useEffect(() => {
@@ -91,15 +116,23 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const setPayroll = useCallback((field: 'project' | 'total', value: number | null) => {
     setPayrollState((p) => ({ ...p, [field]: value, enteredAt: new Date().toISOString() }))
   }, [])
+  const setPayrollAll = useCallback((p: Payroll) => setPayrollState({ ...p }), [])
   const resetPayroll = useCallback(() => setPayrollState({ ...EMPTY_PAYROLL }), [])
 
   const computed = useMemo(() => computeAll(inputs), [inputs])
   const changed = useMemo(() => changedPaths(inputs), [inputs])
   const isChangedField = useCallback((p: string) => isFieldChanged(inputs, p), [inputs])
+  const fp = useMemo(() => fingerprint(inputs), [inputs])
 
   const value = useMemo<Store>(
-    () => ({ inputs, computed, set, resetAll, resetField, changed, isChangedField, payroll, setPayroll, resetPayroll }),
-    [inputs, computed, set, resetAll, resetField, changed, isChangedField, payroll, setPayroll, resetPayroll],
+    () => ({
+      inputs, computed, set, resetAll, resetField, applyInputs, changed, isChangedField,
+      fingerprint: fp, touchedAt, payroll, setPayroll, setPayrollAll, resetPayroll,
+    }),
+    [
+      inputs, computed, set, resetAll, resetField, applyInputs, changed, isChangedField,
+      fp, touchedAt, payroll, setPayroll, setPayrollAll, resetPayroll,
+    ],
   )
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
