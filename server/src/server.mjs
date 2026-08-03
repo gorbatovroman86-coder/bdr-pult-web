@@ -10,8 +10,10 @@
  */
 
 import { createServer } from 'node:http'
+import { DatabaseSync } from 'node:sqlite'
 import { openDb } from './db.mjs'
 import { handle } from './routes.mjs'
+import { scanMessages } from './duties.mjs'
 
 const PORT = Number(process.env.BDR_PORT ?? 18791)
 const HOST = process.env.BDR_HOST ?? '172.18.0.1'
@@ -22,7 +24,28 @@ const ORIGIN = process.env.BDR_ORIGIN ?? 'https://gorbatovroman86-coder.github.i
 const MAX_BODY = 512 * 1024
 
 const db = openDb(DB_FILE)
-const ctx = { db, now: () => new Date().toISOString() }
+
+/**
+ * Ставки пошлин читаются из УЖЕ НАКОПЛЕННЫХ сообщений agro-intel —
+ * СВОИМ соединением и СТРОГО на чтение. Слушатель не трогаем,
+ * к Telegram не обращаемся, чужую базу не изменяем.
+ * Нет базы — молча работаем без автоматических ставок.
+ */
+const AGRO_DB = process.env.BDR_AGRO_DB ?? ''
+const DUTY_WINDOW_DAYS = 75
+
+function scanDuties() {
+  if (!AGRO_DB) return []
+  const src = new DatabaseSync(AGRO_DB, { readOnly: true })
+  try {
+    const since = new Date(Date.now() - DUTY_WINDOW_DAYS * 86400000).toISOString()
+    return scanMessages(src, since)
+  } finally {
+    src.close()
+  }
+}
+
+const ctx = { db, now: () => new Date().toISOString(), scanDuties }
 
 function corsHeaders() {
   return {
