@@ -11,10 +11,11 @@ import { traceNetResult, traceRevenue, type Trace } from '../domain/formulaMap'
 import { Ribbon, RibbonLegend } from '../components/Ribbon'
 import { BasisRuler } from '../components/BasisRuler'
 import { OriginMark, Panel, Stat, Tag, WarnLine } from '../components/bits'
+import { ModelParams } from '../components/ModelParams'
+import { PayrollBlock } from '../components/PayrollBlock'
 import { useStore } from '../state/store'
 import type { ComputedModel } from '../state/compute'
 import { MEASURED, PRODUCT_DESTINATION } from '../data/notes'
-import { isPayrollSet, loadPayroll, savePayroll, type Payroll } from '../data/payroll'
 
 const dutyText = (id: ProductId, pct: number | null): string =>
   id === 'kernel' || id === 'semi' || id === 'cat3' ? (pct === null ? '—' : `${fmt(pct, 1)} %`) : '—'
@@ -78,81 +79,6 @@ function TraceNode({ t }: { t: Trace }) {
   )
 }
 
-/**
- * ФОТ вводится в браузере: значений в репозитории нет, он публичный.
- * Введённое хранится только в этом браузере и никуда не отправляется.
- */
-function PayrollBlock() {
-  const [p, setP] = useState<Payroll>(loadPayroll)
-  const [edit, setEdit] = useState(false)
-
-  const put = (field: 'project' | 'total', raw: string) => {
-    const cleaned = raw.replace(/[^\d]/g, '')
-    const next: Payroll = {
-      ...p,
-      [field]: cleaned === '' ? null : Number(cleaned),
-      enteredAt: new Date().toISOString(),
-    }
-    setP(next)
-    savePayroll(next)
-  }
-
-  if (!isPayrollSet(p) && !edit) {
-    return (
-      <>
-        <p className="ref-p">
-          <b>Не задано.</b> Управленческий ФОТ — внутренние данные, в репозитории
-          их нет. Введите значения: они сохранятся только в этом браузере
-          и никуда не отправятся.
-        </p>
-        <button type="button" className="btn" onClick={() => setEdit(true)}>
-          Ввести ФОТ
-        </button>
-        <p className="ref-p">
-          На расчёт не влияет: в фин. результат ФОТ не входит, налог 25 %
-          считается до него — как в книге.
-        </p>
-      </>
-    )
-  }
-
-  return (
-    <>
-      <div className="field-row">
-        <label className="field">
-          <span className="field-lbl">проект, ₽/мес</span>
-          <input
-            className="inp num"
-            inputMode="numeric"
-            value={p.project ?? ''}
-            placeholder="не задано"
-            onChange={(e) => put('project', e.target.value)}
-          />
-        </label>
-        <label className="field">
-          <span className="field-lbl">итого, ₽/мес</span>
-          <input
-            className="inp num"
-            inputMode="numeric"
-            value={p.total ?? ''}
-            placeholder="не задано"
-            onChange={(e) => put('total', e.target.value)}
-          />
-        </label>
-      </div>
-      <div className="ref-two">
-        <Stat label="проект" value={p.project === null ? '—' : rub(p.project)} unit="₽/мес" />
-        <Stat label="итого" value={p.total === null ? '—' : rub(p.total)} unit="₽/мес" />
-      </div>
-      <p className="ref-p">
-        ✋ Введено вручную, хранится только в этом браузере. В фин. результат
-        не входит, налог 25 % считается до него — как в книге. Выводов по ФОТ
-        не делаем.
-      </p>
-    </>
-  )
-}
-
 export function ModelCard({ c, onBack }: { c: ComputedModel; onBack: () => void }) {
   const [showMeasured, setShowMeasured] = useState(false)
   const { inputs } = useStore()
@@ -193,6 +119,8 @@ export function ModelCard({ c, onBack }: { c: ComputedModel; onBack: () => void 
         <Ribbon data={r.balance} />
         <RibbonLegend data={r.balance} />
       </Panel>
+
+      <ModelParams c={c} />
 
       <div className="stats">
         <Stat
@@ -431,7 +359,7 @@ export function ModelCard({ c, onBack }: { c: ComputedModel; onBack: () => void 
         <div className="ref-grid">
           <div>
             <h3 className="ref-h">Управленческий ФОТ</h3>
-            <PayrollBlock />
+            <PayrollBlock readOnly />
           </div>
 
           <div>

@@ -7,6 +7,7 @@ import { useStore } from '../state/store'
 import { fmt, monthName, rubPerTon } from '../domain/units'
 import { Field } from '../components/Field'
 import { OriginMark, Panel, Tag } from '../components/bits'
+import { PayrollBlock } from '../components/PayrollBlock'
 import type { ContractKey } from '../state/inputs'
 
 const MONTHS = ['2026-06', '2026-07', '2026-08', '2026-09', '2026-10']
@@ -270,6 +271,11 @@ export function Rates() {
             <Field path="shipOil" label="отгрузка масла" unit="₽/т" digits={0} min={0} max={20000} />
             <Field path="shipMeal" label="отгрузка жмыха" unit="₽/т" digits={0} min={0} max={20000} />
             <Field path="huskFuelSaving" label="экономия на топливе от лузги" unit="₽/т лузги" digits={0} min={0} max={20000} hint="Отдельной строкой ниже фин. результата, в выручку не входит." />
+          </div>
+
+          <div>
+            <h3 className="ref-h">Управленческий ФОТ — справочно, в фин. результат не входит</h3>
+            <PayrollBlock />
           </div>
         </div>
       </details>

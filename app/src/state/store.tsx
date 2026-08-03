@@ -12,6 +12,7 @@ import {
   type Inputs,
 } from './inputs'
 import { computeAll, type Computed } from './compute'
+import { EMPTY_PAYROLL, loadPayroll, savePayroll, type Payroll } from '../data/payroll'
 
 interface Store {
   inputs: Inputs
@@ -25,6 +26,10 @@ interface Store {
   /** Список изменённых полей. */
   changed: string[]
   isChangedField: (path: string) => boolean
+  /** ФОТ живёт отдельно: своё хранилище и свой сброс — общий сброс его не трогает. */
+  payroll: Payroll
+  setPayroll: (field: 'project' | 'total', value: number | null) => void
+  resetPayroll: () => void
 }
 
 const Ctx = createContext<Store | null>(null)
@@ -78,13 +83,23 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setInputs((prev) => setPath(prev, path, getPath(BASE, path)))
   }, [])
 
+  const [payroll, setPayrollState] = useState<Payroll>(loadPayroll)
+  useEffect(() => {
+    savePayroll(payroll)
+  }, [payroll])
+
+  const setPayroll = useCallback((field: 'project' | 'total', value: number | null) => {
+    setPayrollState((p) => ({ ...p, [field]: value, enteredAt: new Date().toISOString() }))
+  }, [])
+  const resetPayroll = useCallback(() => setPayrollState({ ...EMPTY_PAYROLL }), [])
+
   const computed = useMemo(() => computeAll(inputs), [inputs])
   const changed = useMemo(() => changedPaths(inputs), [inputs])
   const isChangedField = useCallback((p: string) => isFieldChanged(inputs, p), [inputs])
 
   const value = useMemo<Store>(
-    () => ({ inputs, computed, set, resetAll, resetField, changed, isChangedField }),
-    [inputs, computed, set, resetAll, resetField, changed, isChangedField],
+    () => ({ inputs, computed, set, resetAll, resetField, changed, isChangedField, payroll, setPayroll, resetPayroll }),
+    [inputs, computed, set, resetAll, resetField, changed, isChangedField, payroll, setPayroll, resetPayroll],
   )
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
