@@ -1,115 +1,136 @@
 /**
- * Сценарии и история. В ЭТАПЕ 3 пересчёта нет — движок появится в ЭТАПЕ 4.
- * Ползунки показывают форму экрана и правила показа, цифры сценария
- * помечены как незаполненные, чтобы никто не принял их за расчёт.
+ * Сценарии и история.
+ *
+ * Ползунки правят РЕАЛЬНЫЕ входные данные — пересчёт немедленный, заглушек нет.
+ * Слева всегда видна база (эталон), справа — что стало.
  */
 
-import { useState } from 'react'
+import { useMemo } from 'react'
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
-import { dateTime, fmt, fxCny, fxUsd, kRub, monthShort } from '../domain/units'
+import { dateTime, fmt, fxCny, fxUsd, kRub, monthShort, pct, signed } from '../domain/units'
 import { Panel, Tag } from '../components/bits'
-import { COMPUTED } from '../data/calc'
+import { useStore } from '../state/store'
+import { computeAll, ranked } from '../state/compute'
+import { BASE } from '../state/inputs'
 import { HISTORY } from '../data/history'
-
-const PRESETS = ['базовый', 'оптимистичный', 'пессимистичный', 'свой'] as const
 
 /* Recharts кладёт цвет в SVG-атрибут, где var(--…) не работает —
    поэтому здесь литералы, совпадающие с токенами темы. */
-const C_DECIDE = '#3f687d'
+const C_BASE = '#a9a294'
+const C_NOW = '#3f687d'
 const C_LINE = '#dbd4c5'
 const C_INK2 = '#62665a'
 
-export function Scenarios() {
-  const [preset, setPreset] = useState<(typeof PRESETS)[number]>('базовый')
-  const [cny, setCny] = useState(11.5)
-  const [usd, setUsd] = useState(80)
-  const [oilPrice, setOilPrice] = useState(8550)
-  const [oilYield, setOilYield] = useState(49)
-  const [discount, setDiscount] = useState(1)
+const SLIDERS: { path: string; label: string; min: number; max: number; step: number; digits: number }[] = [
+  { path: 'fxCny.value', label: 'Курс CNY / RUB', min: 8, max: 16, step: 0.01, digits: 4 },
+  { path: 'fxUsd.value', label: 'Курс USD / RUB', min: 60, max: 110, step: 0.05, digits: 2 },
+  { path: 'contracts.sunOil.value', label: 'Подсолнечное масло, CNY/т', min: 6000, max: 12000, step: 10, digits: 0 },
+  { path: 'contracts.kernel.value', label: 'Ядро, CNY/т', min: 4000, max: 9000, step: 10, digits: 0 },
+  { path: 'models.M5.yieldOil', label: 'Выход масла у М5', min: 0.3, max: 0.6, step: 0.005, digits: 3 },
+  { path: 'models.M3.processingWithVat', label: 'Переработка М3, ₽/т', min: 2000, max: 9000, step: 50, digits: 0 },
+]
 
-  const chart = [...COMPUTED]
-    .sort((a, b) => b.result.netResult - a.result.netResult)
-    .map((c) => ({ name: c.meta.id, base: Number(c.result.netResult.toFixed(2)) }))
+const get = (o: unknown, p: string) =>
+  p.split('.').reduce<unknown>((a, k) => (a as Record<string, unknown>)?.[k], o) as number | null
+
+export function Scenarios() {
+  const { inputs, computed, set, resetAll, changed } = useStore()
+  const base = useMemo(() => computeAll(BASE), [])
+
+  const rows = useMemo(() => {
+    const order = ranked(base).map((m) => m.meta.id)
+    return order.map((id) => {
+      const b = base.models.find((m) => m.meta.id === id)!
+      const n = computed.models.find((m) => m.meta.id === id)!
+      const blocked = n.blockers.length > 0
+      return {
+        id,
+        name: n.meta.name,
+        base: b.result.netResult,
+        now: blocked ? null : n.result.netResult,
+        delta: blocked ? null : n.result.netResult - b.result.netResult,
+        marginNow: blocked ? null : n.result.margin,
+      }
+    })
+  }, [base, computed])
+
+  const orderBase = ranked(base).map((m) => m.meta.id).join('→')
+  const orderNow = ranked(computed).map((m) => m.meta.id).join('→')
+  const orderChanged = orderBase !== orderNow
+
+  const chart = rows.map((r) => ({
+    name: r.id,
+    база: Number(r.base.toFixed(2)),
+    сейчас: r.now === null ? 0 : Number(r.now.toFixed(2)),
+  }))
 
   return (
     <>
       <Panel
         title="Сценарный анализ"
         aside={
-          <div className="sortbar" role="group" aria-label="Сценарий">
-            {PRESETS.map((p) => (
-              <button
-                key={p}
-                type="button"
-                className={`chip${preset === p ? ' chip--on' : ''}`}
-                aria-pressed={preset === p}
-                onClick={() => setPreset(p)}
-              >
-                {p}
-              </button>
-            ))}
-          </div>
+          changed.length > 0 ? (
+            <button type="button" className="btn" onClick={resetAll}>
+              Сбросить изменения
+            </button>
+          ) : (
+            <Tag tone="quiet">сейчас = база</Tag>
+          )
         }
       >
         <div className="sliders">
-          <Slider label="Курс CNY / RUB" value={cny} min={10} max={14} step={0.01} onChange={setCny} fmtV={fxCny} />
-          <Slider label="Курс USD / RUB" value={usd} min={70} max={95} step={0.05} onChange={setUsd} fmtV={fxUsd} />
-          <Slider
-            label="Подсолнечное масло, CNY/т"
-            value={oilPrice}
-            min={7000}
-            max={10000}
-            step={10}
-            onChange={setOilPrice}
-            fmtV={(v) => fmt(v, 0)}
-          />
-          <Slider
-            label="Выход масла, %"
-            value={oilYield}
-            min={40}
-            max={58}
-            step={0.5}
-            onChange={setOilYield}
-            fmtV={(v) => fmt(v, 1)}
-          />
-          <Slider
-            label="Прогнозный дисконт"
-            value={discount}
-            min={0.8}
-            max={1}
-            step={0.0001}
-            onChange={setDiscount}
-            fmtV={(v) => fmt(v, 4)}
-          />
+          {SLIDERS.map((s) => {
+            const v = get(inputs, s.path)
+            const b = get(BASE, s.path)
+            const diff = v !== null && b !== null && Math.abs(v - b) > 1e-12
+            return (
+              <label key={s.path} className={`sl${diff ? ' sl--changed' : ''}`}>
+                <span className="sl-lbl">
+                  {s.label}
+                  {diff && <span className="sl-badge">изменено</span>}
+                </span>
+                <input
+                  type="range"
+                  className="sl-input"
+                  min={s.min}
+                  max={s.max}
+                  step={s.step}
+                  value={v ?? b ?? s.min}
+                  onChange={(e) => set(s.path, Number(e.target.value))}
+                />
+                <span className="sl-val num">
+                  {fmt(v ?? 0, s.digits)}
+                  {diff && <span className="sl-was num"> база {fmt(b ?? 0, s.digits)}</span>}
+                </span>
+              </label>
+            )
+          })}
         </div>
 
         <p className="note">
-          <b>Прогнозный дисконт живёт только здесь.</b> В базовом расчёте его нет: 0,8636 из файла —
-          это прогноз снижения цены, а не физический коэффициент. Арифметика в файле к тому же
-          неточна — снижение 1 250 → 1 100 даёт 0,88, а записано 0,8636.
+          Ползунки правят те же входные данные, что и экран «Исходные данные», — расчёт
+          пересчитывается сразу, отдельного «сценарного режима» нет. Прогнозных дисконтов
+          в базовом расчёте нет: 0,8636 из книги — прогноз снижения цены, а не физический
+          коэффициент, и его арифметика к тому же неточна (1 250 → 1 100 даёт 0,88).
         </p>
-
-        <div className="stub">
-          <span className="stub-icon" aria-hidden="true">⛔</span>
-          <div>
-            <b>Пересчёт сценария появится после переноса формул (ЭТАП 4).</b>
-            <p>
-              Сейчас показана только форма экрана и правила: отклонение от базы, знак изменения
-              и вывод о том, изменился ли порядок режимов. Выдуманных цифр здесь нет намеренно.
-            </p>
-          </div>
-        </div>
       </Panel>
 
-      <Panel title="Фин. результат по режимам, тыс.₽/мес" aside={<Tag tone="quiet">база, окт.2026</Tag>}>
+      <Panel
+        title="База против текущего, тыс.₽/мес"
+        aside={
+          <Tag tone={orderChanged ? 'alert' : 'quiet'}>
+            {orderChanged ? '⚠ порядок режимов изменился' : 'порядок режимов не изменился'}
+          </Tag>
+        }
+      >
         <div className="chartbox">
-          <ResponsiveContainer width="100%" height={260}>
+          <ResponsiveContainer width="100%" height={280}>
             <BarChart data={chart} margin={{ top: 8, right: 8, left: 8, bottom: 4 }}>
               <CartesianGrid stroke={C_LINE} vertical={false} />
               <XAxis dataKey="name" stroke={C_INK2} tickLine={false} />
               <YAxis stroke={C_INK2} tickLine={false} width={64} />
               <Tooltip
-                formatter={(v) => [kRub(Number(v)), 'фин. результат']}
+                formatter={(v, n) => [kRub(Number(v)), String(n)]}
                 contentStyle={{
                   background: 'var(--panel)',
                   border: '1px solid var(--line)',
@@ -118,10 +139,53 @@ export function Scenarios() {
                   fontSize: 12,
                 }}
               />
-              <Bar dataKey="base" fill={C_DECIDE} radius={[4, 4, 0, 0]} isAnimationActive={false} />
+              <Bar dataKey="база" fill={C_BASE} radius={[4, 4, 0, 0]} isAnimationActive={false} />
+              <Bar dataKey="сейчас" fill={C_NOW} radius={[4, 4, 0, 0]} isAnimationActive={false} />
             </BarChart>
           </ResponsiveContainer>
         </div>
+
+        <div className="xscroll">
+          <table className="tbl">
+            <thead>
+              <tr>
+                <th>режим</th>
+                <th className="ta-r">база</th>
+                <th className="ta-r">сейчас</th>
+                <th className="ta-r">отклонение</th>
+                <th className="ta-r">%</th>
+                <th className="ta-r">рентаб.</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r) => (
+                <tr key={r.id}>
+                  <td>
+                    <b className="num">{r.id}</b> <span className="td-note">{r.name}</span>
+                  </td>
+                  <td className="num ta-r">{kRub(r.base)}</td>
+                  <td className="num ta-r b">
+                    {r.now === null ? <span className="hint-warn">⛔ остановлен</span> : kRub(r.now)}
+                  </td>
+                  <td className="num ta-r">{r.delta === null ? '—' : signed(r.delta, 2)}</td>
+                  <td className="num ta-r">
+                    {r.delta === null || r.base === 0 ? '—' : `${signed((r.delta / r.base) * 100, 1)} %`}
+                  </td>
+                  <td className="num ta-r">
+                    {r.marginNow === null || r.marginNow === undefined ? '—' : `${pct(r.marginNow)} %`}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <p className="note">
+          Порядок в базе: <b className="num">{orderBase}</b>. Сейчас: <b className="num">{orderNow}</b>.
+          {orderChanged
+            ? ' Рейтинг перевернулся — это главный вывод сценария.'
+            : ' Рейтинг устойчив к внесённым изменениям.'}
+        </p>
       </Panel>
 
       <Panel title="История расчётов">
@@ -157,44 +221,10 @@ export function Scenarios() {
           </table>
         </div>
         <p className="note">
-          Каждый снимок хранит курсы и ставки, действовавшие на момент расчёта, — иначе старую
-          цифру нельзя объяснить.
+          Снимки прошлых расчётов. Каждый хранит курсы и ставки, действовавшие на тот момент, —
+          иначе старую цифру нельзя объяснить.
         </p>
       </Panel>
     </>
-  )
-}
-
-function Slider({
-  label,
-  value,
-  min,
-  max,
-  step,
-  onChange,
-  fmtV,
-}: {
-  label: string
-  value: number
-  min: number
-  max: number
-  step: number
-  onChange: (v: number) => void
-  fmtV: (v: number) => string
-}) {
-  return (
-    <label className="sl">
-      <span className="sl-lbl">{label}</span>
-      <input
-        type="range"
-        className="sl-input"
-        min={min}
-        max={max}
-        step={step}
-        value={value}
-        onChange={(e) => onChange(Number(e.target.value))}
-      />
-      <span className="sl-val num">{fmtV(value)}</span>
-    </label>
   )
 }

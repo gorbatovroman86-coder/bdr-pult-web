@@ -7,22 +7,18 @@ import { useState } from 'react'
 import type { ProductId } from '../domain/types'
 import { PRODUCT_LABEL_FULL, RAW_LABEL, DESTINATION_LABEL } from '../domain/types'
 import { fmt, kRub, pct, rub, rubPerTon, share, signed, tons } from '../domain/units'
-import { SETTINGS_WORKING } from '../domain/engine'
 import { traceNetResult, traceRevenue, type Trace } from '../domain/formulaMap'
 import { Ribbon, RibbonLegend } from '../components/Ribbon'
 import { BasisRuler } from '../components/BasisRuler'
 import { OriginMark, Panel, Stat, Tag, WarnLine } from '../components/bits'
-import { INPUT, MEASURED, PRODUCT_DESTINATION, type ComputedModel } from '../data/calc'
-import { isPayrollSet, loadPayroll, savePayroll, type Payroll } from '../data/payroll'
+import { ModelParams } from '../components/ModelParams'
+import { PayrollBlock } from '../components/PayrollBlock'
+import { useStore } from '../state/store'
+import type { ComputedModel } from '../state/compute'
+import { MEASURED, PRODUCT_DESTINATION } from '../data/notes'
 
-const DUTY_TEXT: Record<ProductId, string> = {
-  kernel: `${fmt(INPUT.duties.kernelPercent.value, 1)} %`,
-  semi: `${fmt(INPUT.duties.kernelPercent.value, 1)} %`,
-  cat3: `${fmt(INPUT.duties.kernelPercent.value, 1)} %`,
-  oil: '—',
-  meal: '—',
-  husk: '—',
-}
+const dutyText = (id: ProductId, pct: number | null): string =>
+  id === 'kernel' || id === 'semi' || id === 'cat3' ? (pct === null ? '—' : `${fmt(pct, 1)} %`) : '—'
 
 function Waterfall({ c }: { c: ComputedModel }) {
   const r = c.result
@@ -83,92 +79,19 @@ function TraceNode({ t }: { t: Trace }) {
   )
 }
 
-/**
- * ФОТ вводится в браузере: значений в репозитории нет, он публичный.
- * Введённое хранится только в этом браузере и никуда не отправляется.
- */
-function PayrollBlock() {
-  const [p, setP] = useState<Payroll>(loadPayroll)
-  const [edit, setEdit] = useState(false)
-
-  const put = (field: 'project' | 'total', raw: string) => {
-    const cleaned = raw.replace(/[^\d]/g, '')
-    const next: Payroll = {
-      ...p,
-      [field]: cleaned === '' ? null : Number(cleaned),
-      enteredAt: new Date().toISOString(),
-    }
-    setP(next)
-    savePayroll(next)
-  }
-
-  if (!isPayrollSet(p) && !edit) {
-    return (
-      <>
-        <p className="ref-p">
-          <b>Не задано.</b> Управленческий ФОТ — внутренние данные, в репозитории
-          их нет. Введите значения: они сохранятся только в этом браузере
-          и никуда не отправятся.
-        </p>
-        <button type="button" className="btn" onClick={() => setEdit(true)}>
-          Ввести ФОТ
-        </button>
-        <p className="ref-p">
-          На расчёт не влияет: в фин. результат ФОТ не входит, налог 25 %
-          считается до него — как в книге.
-        </p>
-      </>
-    )
-  }
-
-  return (
-    <>
-      <div className="field-row">
-        <label className="field">
-          <span className="field-lbl">проект, ₽/мес</span>
-          <input
-            className="inp num"
-            inputMode="numeric"
-            value={p.project ?? ''}
-            placeholder="не задано"
-            onChange={(e) => put('project', e.target.value)}
-          />
-        </label>
-        <label className="field">
-          <span className="field-lbl">итого, ₽/мес</span>
-          <input
-            className="inp num"
-            inputMode="numeric"
-            value={p.total ?? ''}
-            placeholder="не задано"
-            onChange={(e) => put('total', e.target.value)}
-          />
-        </label>
-      </div>
-      <div className="ref-two">
-        <Stat label="проект" value={p.project === null ? '—' : rub(p.project)} unit="₽/мес" />
-        <Stat label="итого" value={p.total === null ? '—' : rub(p.total)} unit="₽/мес" />
-      </div>
-      <p className="ref-p">
-        ✋ Введено вручную, хранится только в этом браузере. В фин. результат
-        не входит, налог 25 % считается до него — как в книге. Выводов по ФОТ
-        не делаем.
-      </p>
-    </>
-  )
-}
-
 export function ModelCard({ c, onBack }: { c: ComputedModel; onBack: () => void }) {
   const [showMeasured, setShowMeasured] = useState(false)
+  const { inputs } = useStore()
   const { meta, result: r } = c
+  const mp = inputs.models[meta.id]
 
   const trace = traceNetResult(
     r,
     meta.sheet,
-    SETTINGS_WORKING.serviceVatDivisor,
-    meta.params.purchaseWithVat,
-    meta.params.processingWithVat,
-    meta.params.moneyRate,
+    inputs.serviceVatDivisor,
+    c.params.purchaseWithVat,
+    c.params.processingWithVat,
+    c.params.moneyRate,
   )
   const revRows = traceRevenue(r, meta.sheet, c.prices)
   const soldOverstated = r.soldTonsAsInFile > r.rawTons
@@ -184,8 +107,8 @@ export function ModelCard({ c, onBack }: { c: ComputedModel; onBack: () => void 
           <h1 className="crumb-name">{meta.name}</h1>
         </div>
         <div className="crumb-meta num">
-          лист «{meta.sheet}» · {RAW_LABEL[meta.raw]} · {fmt(meta.params.intakeTonsPerDay, 0)} т/сут ×{' '}
-          {fmt(meta.params.daysPerMonth, 0)} сут = {tons(r.rawTons)} т/мес
+          лист «{meta.sheet}» · {RAW_LABEL[meta.raw]} · {fmt(c.params.intakeTonsPerDay, 0)} т/сут ×{' '}
+          {fmt(c.params.daysPerMonth, 0)} сут = {tons(r.rawTons)} т/мес
         </div>
       </div>
 
@@ -196,6 +119,8 @@ export function ModelCard({ c, onBack }: { c: ComputedModel; onBack: () => void 
         <Ribbon data={r.balance} />
         <RibbonLegend data={r.balance} />
       </Panel>
+
+      <ModelParams c={c} />
 
       <div className="stats">
         <Stat
@@ -290,8 +215,8 @@ export function ModelCard({ c, onBack }: { c: ComputedModel; onBack: () => void 
           <BasisRuler b={c.basis} />
 
           <p className="basis-note">
-            Жмых от базиса не зависит: всегда Китай, {fmt(INPUT.contracts.rapeMeal, 0)} CNY −{' '}
-            {rubPerTon(INPUT.logistics.rapeMeal)} ₽/т. В М1 и М4 жмых идентичен.
+            Жмых от базиса не зависит: всегда Китай, {fmt(inputs.contracts.rapeMeal.value ?? 0, 0)} CNY −{' '}
+            {rubPerTon(inputs.logistics.rapeMeal.value ?? 0)} ₽/т. В М1 и М4 жмых идентичен.
           </p>
         </Panel>
       )}
@@ -357,23 +282,9 @@ export function ModelCard({ c, onBack }: { c: ComputedModel; onBack: () => void 
                 return (
                   <tr key={id}>
                     <td>{PRODUCT_LABEL_FULL[id]}</td>
-                    <td className="num ta-r">{DUTY_TEXT[id]}</td>
+                    <td className="num ta-r">{dutyText(id, inputs.dutyKernelPercent.value)}</td>
                     <td className="num ta-r">
-                      {rubPerTon(
-                        id === 'oil' && c.basis
-                          ? c.basis.winner.logisticsRubPerTon
-                          : (INPUT.logistics as Record<string, number>)[
-                              id === 'oil'
-                                ? meta.raw === 'rapeseed'
-                                  ? 'rapeOilCN'
-                                  : 'sunOil'
-                                : id === 'meal'
-                                  ? meta.raw === 'rapeseed'
-                                    ? 'rapeMeal'
-                                    : 'sunMeal'
-                                  : id
-                            ],
-                      )}
+                      {rubPerTon(inputs.logistics[c.priceKeys[id as keyof typeof c.priceKeys]!]?.value ?? 0)}
                     </td>
                     <td className="num ta-r b">{rubPerTon(net)}</td>
                     <td className="num ta-r">{rubPerTon(net * 1.1)}</td>
@@ -448,7 +359,7 @@ export function ModelCard({ c, onBack }: { c: ComputedModel; onBack: () => void 
         <div className="ref-grid">
           <div>
             <h3 className="ref-h">Управленческий ФОТ</h3>
-            <PayrollBlock />
+            <PayrollBlock readOnly />
           </div>
 
           <div>
@@ -468,17 +379,14 @@ export function ModelCard({ c, onBack }: { c: ComputedModel; onBack: () => void 
                 <tbody>
                   <tr>
                     <td>ядро</td>
-                    <td className="num ta-r">{share(meta.params.yields.kernel)} %</td>
+                    <td className="num ta-r">{share(mp.yieldKernel)} %</td>
                     <td className="num ta-r">{share(MEASURED.kernelShare)} %</td>
                   </tr>
                   <tr>
                     <td>полуфабрикат</td>
                     <td className="num ta-r">
                       {share(
-                        1 -
-                          meta.params.yields.kernel -
-                          meta.params.yields.cat3 -
-                          meta.params.yields.husk,
+                        1 - mp.yieldKernel - mp.yieldCat3 - mp.yieldHusk,
                       )}{' '}
                       %
                     </td>
@@ -486,7 +394,7 @@ export function ModelCard({ c, onBack }: { c: ComputedModel; onBack: () => void 
                   </tr>
                   <tr>
                     <td>3 категория</td>
-                    <td className="num ta-r">{share(meta.params.yields.cat3)} %</td>
+                    <td className="num ta-r">{share(mp.yieldCat3)} %</td>
                     <td className="num ta-r">{share(MEASURED.cat3Share)} %</td>
                   </tr>
                   <tr className="tr-total">
@@ -506,7 +414,7 @@ export function ModelCard({ c, onBack }: { c: ComputedModel; onBack: () => void 
             <p className="ref-p">
               Энергозатраты · ГСМ · амортизация · постоянные расходы · EBITDA · валовая прибыль ·
               точка безубыточности · загрузка мощностей. Всё производственное внутри ставки
-              переработки {rub(meta.params.processingWithVat)} ₽/т. Оценок не подставляем.
+              переработки {rub(mp.processingWithVat)} ₽/т. Оценок не подставляем.
             </p>
           </div>
         </div>

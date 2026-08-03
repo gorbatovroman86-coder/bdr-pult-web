@@ -7,7 +7,10 @@
 import { describe, expect, it } from 'vitest'
 import { calcMonth, SETTINGS_WORKING, type EngineParams } from '../src/domain/engine'
 import { engineBlockers, negativePriceWarnings } from '../src/domain/guards'
-import { byId } from '../src/data/models'
+import { toEngineParams } from '../src/state/compute'
+import { BASE } from '../src/state/inputs'
+
+const byId = (id: string) => ({ params: toEngineParams(id as 'M1', BASE) })
 
 const M3 = byId('M3').params
 const M5 = byId('M5').params
