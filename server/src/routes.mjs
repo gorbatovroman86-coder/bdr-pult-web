@@ -19,7 +19,7 @@ import {
 } from './db.mjs'
 import { validateFingerprint, validateInputs, validateJournalEntry } from './validate.mjs'
 import { fetchRate, isFresh } from './fx.mjs'
-import { implausible, prevMonth, reconcile } from './duties.mjs'
+import { assessRate, prevMonth, reconcile } from './duties.mjs'
 
 const json = (status, body) => ({ status, body })
 const bad = (status, error, details) => json(status, details ? { error, details } : { error })
@@ -158,14 +158,24 @@ export function decideDuties(hits, nowIso) {
 
   const rates = resolved.map((r) => {
     const prev = byKey.get(`${prevMonth(r.month)}|${r.product}`)
-    const jump = implausible(r.rate, prev?.rate ?? null)
+    // Ряд по этому продукту, не считая оцениваемого месяца.
+    const history = resolved
+      .filter((x) => x.product === r.product && x.month < r.month)
+      .sort((a, b) => a.month.localeCompare(b.month))
+      .map((x) => x.rate)
+
+    const check = assessRate(r.rate, prev?.rate ?? null, history)
+
     return {
       ...r,
       previousRate: prev?.rate ?? null,
-      implausible: jump,
-      // Применяем сами только при согласии источников и правдоподобии.
-      autoApply: r.status === 'confirmed' && !jump,
-      needsHuman: r.status === 'disputed' || jump || r.status === 'single',
+      history,
+      alarm: check.alarm,
+      alarmBasis: check.basis,
+      alarmMessage: check.message,
+      // Применяем сами только при согласии источников и без тревоги.
+      autoApply: r.status === 'confirmed' && !check.alarm,
+      needsHuman: r.status !== 'confirmed' || check.alarm,
     }
   })
 

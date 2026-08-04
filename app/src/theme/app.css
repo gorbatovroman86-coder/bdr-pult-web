@@ -2233,6 +2233,110 @@
   color: var(--decide);
 }
 
+/* ───────────────────────────── Ставки пошлин */
+
+.duty-hd {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.duty-hd .btn {
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+}
+
+.duty-src {
+  font-size: 11.5px;
+}
+
+.duty-ok {
+  color: var(--ok);
+  font-weight: 600;
+  font-size: 12.5px;
+  white-space: nowrap;
+}
+
+.duty-variants {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+  margin: 9px 0;
+}
+
+.duty-variants .btn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  text-align: left;
+}
+
+.duty-vsrc {
+  font-size: 10.5px;
+  font-weight: 400;
+  opacity: 0.85;
+}
+
+.duty-pair {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.duty-spark {
+  display: block;
+  width: 100%;
+  max-width: 260px;
+  height: auto;
+  margin: 4px 0 8px;
+}
+
+.duty-hist {
+  margin-top: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--panel2);
+}
+
+.duty-hist > summary {
+  padding: 9px 13px;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.duty-hist-body {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  padding: 0 13px 13px;
+}
+
+.duty-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12px;
+}
+
+.duty-list li {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 3px 0;
+  border-bottom: 1px solid var(--line2);
+}
+
+@media (max-width: 720px) {
+  .duty-hist-body {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* ───────────────────────────── Курсы валют */
 
 .fxrow {

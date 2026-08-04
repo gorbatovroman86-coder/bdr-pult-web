@@ -18,6 +18,15 @@ Environment=BDR_PORT=18791
 Environment=BDR_DB=/root/bdr-pult-api/data/bdr.sqlite
 Environment=BDR_ORIGIN=https://gorbatovroman86-coder.github.io
 
+# Ставки пошлин читаются из накопленных сообщений agro-intel — СТРОГО на чтение.
+# Убрать строку, если автосбор ставок не нужен.
+Environment=BDR_AGRO_DB=/root/agro-intel/agro.db
+
+# Закрыто по умолчанию: запрос без заголовка авторизации отвергается.
+# Значит, при ошибке в конфиге caddy сервис не откроется молча.
+# Выключать (=0) можно только для отладки без caddy.
+Environment=BDR_REQUIRE_AUTH=1
+
 Restart=on-failure
 RestartSec=5
 
@@ -33,6 +42,8 @@ PrivateTmp=yes
 ProtectSystem=strict
 ProtectHome=no
 ReadWritePaths=/root/bdr-pult-api/data
+# Чужая база — только на чтение, записи в неё быть не может.
+ReadOnlyPaths=/root/agro-intel
 ProtectKernelTunables=yes
 ProtectKernelModules=yes
 ProtectControlGroups=yes

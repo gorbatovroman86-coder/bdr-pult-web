@@ -264,12 +264,69 @@ export function reconcile(hits) {
 
 // ─────────────────────────────────────────────── Сторожа
 
-/** Изменение больше чем вдвое к прошлому месяцу — не применять молча. */
+/**
+ * Изменение больше чем вдвое к прошлому месяцу.
+ *
+ * ВНИМАНИЕ: для пошлины это ПЛОХОЙ признак ошибки. Ставка плавающая
+ * и по устройству меняется кратно — в августе 2026 она законно выросла
+ * в 2,35 раза. Правило оставлено только потому, что накопленного ряда
+ * ещё нет; см. `assessRate`.
+ */
 export function implausible(rate, previousRate) {
   if (previousRate === null || previousRate === undefined || previousRate <= 0) return false
   if (rate <= 0) return false
   const k = rate / previousRate
   return k >= 2 || k <= 0.5
+}
+
+/** С какой длины ряда переходим на сравнение с историей, а не с прошлым месяцем. */
+export const HISTORY_ENOUGH = 6
+
+/**
+ * Значение вне накопленного диапазона — с запасом на естественный ход ставки.
+ * Запас в половину размаха: ставка регулярно обновляет минимумы и максимумы,
+ * и тревожить на каждом новом крае бессмысленно.
+ */
+export function outOfHistoricalRange(rate, history) {
+  const past = history.filter((v) => typeof v === 'number' && Number.isFinite(v) && v >= 0)
+  if (past.length < HISTORY_ENOUGH) return false
+  const lo = Math.min(...past)
+  const hi = Math.max(...past)
+  const pad = Math.max((hi - lo) / 2, hi * 0.25)
+  return rate < lo - pad || rate > hi + pad
+}
+
+/**
+ * Оценка ставки: надо ли звать человека и что ему сказать.
+ *
+ * Пока ряд короткий — сравниваем с прошлым месяцем, но говорим по существу:
+ * пошлина плавающая, кратные изменения нормальны, это повод СВЕРИТЬ,
+ * а не подозревать опечатку.
+ */
+export function assessRate(rate, previousRate, history = []) {
+  if (outOfHistoricalRange(rate, history)) {
+    return {
+      alarm: true,
+      basis: 'history',
+      message:
+        `Значение выходит за пределы накопленного ряда (${Math.min(...history)}…${Math.max(...history)} ₽/т). ` +
+        'Сверьте с источником, прежде чем применять.',
+    }
+  }
+
+  if (history.length < HISTORY_ENOUGH && implausible(rate, previousRate)) {
+    return {
+      alarm: true,
+      basis: 'double',
+      message:
+        `Изменение к прошлому месяцу более чем вдвое (было ${previousRate} ₽/т). ` +
+        'Пошлина плавающая, кратные изменения для неё нормальны — это повод сверить с источником, ' +
+        `а не признак ошибки. Ряда пока мало (${history.length} из ${HISTORY_ENOUGH} месяцев), ` +
+        'поэтому сравниваем с прошлым месяцем.',
+    }
+  }
+
+  return { alarm: false, basis: null, message: '' }
 }
 
 /** Предыдущий месяц в виде ГГГГ-ММ. */

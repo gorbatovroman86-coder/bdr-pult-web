@@ -7,6 +7,8 @@
  *
  * ЛОГИ: время, метод, путь, код ответа, длительность. Ни параметров,
  * ни цен, ни ставок, ни тел запросов — цифры в логи не попадают никогда.
+ * Отдельной строкой отмечаются отказы: превышение частоты и обращение
+ * без авторизации, с адресом обращавшегося и без его заголовков.
  */
 
 import { createServer } from 'node:http'
@@ -14,11 +16,23 @@ import { DatabaseSync } from 'node:sqlite'
 import { openDb } from './db.mjs'
 import { handle } from './routes.mjs'
 import { scanMessages } from './duties.mjs'
+import {
+  REJECT_DELAY_MS, clientKey, createRateLimiter, hasAuth, needsAuthHeader,
+} from './guard.mjs'
 
 const PORT = Number(process.env.BDR_PORT ?? 18791)
 const HOST = process.env.BDR_HOST ?? '172.18.0.1'
 const DB_FILE = process.env.BDR_DB ?? '/root/bdr-pult-api/data/bdr.sqlite'
 const ORIGIN = process.env.BDR_ORIGIN ?? 'https://gorbatovroman86-coder.github.io'
+
+/**
+ * Отказывать запросам без заголовка авторизации. Выключать можно только
+ * для локальной отладки без caddy: с выключенным сервис открыт всем,
+ * кто дотянулся до порта.
+ */
+const REQUIRE_AUTH = process.env.BDR_REQUIRE_AUTH !== '0'
+
+const limiter = createRateLimiter()
 
 /** Тела больше этого не читаем: набор параметров с журнальной записью много меньше. */
 const MAX_BODY = 512 * 1024
@@ -83,9 +97,22 @@ function readBody(req) {
   })
 }
 
+/**
+ * Отказ фиксируется в журнале с адресом и причиной — но без заголовка
+ * авторизации и без тела: в лог не должны попасть ни пароль, ни цифры.
+ */
+function noteRefusal(kind, key, method, path) {
+  process.stderr.write(
+    `${new Date().toISOString()} ОТКАЗ ${kind} адрес=${key} ${method} ${path}\n`,
+  )
+}
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
+
 const server = createServer(async (req, res) => {
   const started = Date.now()
   const path = new URL(req.url, 'http://x').pathname
+  const key = clientKey(req.headers, req.socket?.remoteAddress)
   let status = 500
 
   const send = (code, payload) => {
@@ -100,10 +127,28 @@ const server = createServer(async (req, res) => {
   }
 
   try {
+    // Ограничение частоты — раньше всего прочего: отказ должен быть дешёвым.
+    const rate = limiter.check(key, Date.now())
+    if (!rate.allowed) {
+      noteRefusal('частота', key, req.method, path)
+      await sleep(REJECT_DELAY_MS)
+      send(429, { error: 'слишком много запросов, попробуйте позже' })
+      return
+    }
+
     if (req.method === 'OPTIONS') {
       status = 204
       res.writeHead(204, corsHeaders())
       res.end()
+      return
+    }
+
+    // Закрыто по умолчанию: запрос без авторизации означает, что caddy его
+    // не проверял — то есть сервис открыт наружу по ошибке в конфиге.
+    if (REQUIRE_AUTH && needsAuthHeader(req.method, path) && !hasAuth(req.headers)) {
+      noteRefusal('без авторизации', key, req.method, path)
+      await sleep(REJECT_DELAY_MS)
+      send(401, { error: 'требуется авторизация' })
       return
     }
 

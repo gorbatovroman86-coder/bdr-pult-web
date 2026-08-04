@@ -11,9 +11,18 @@ import { PayrollBlock } from '../components/PayrollBlock'
 import { Transfer } from '../components/Transfer'
 import { Connection } from '../components/Sync'
 import { FxPanel } from '../components/FxRates'
+import { DutiesBlock } from '../components/Duties'
 import type { ContractKey } from '../state/inputs'
 
 const MONTHS = ['2026-06', '2026-07', '2026-08', '2026-09', '2026-10']
+
+/** Откуда взялась ставка — подпись под полем. */
+const SRC: Record<string, string> = {
+  auto: '🔄 автосбор из каналов',
+  manual: '✋ введено вручную',
+  file: '📄 из файла',
+  setting: '⚙️ реконструкция эталона',
+}
 
 const PRODUCT_ROWS: { key: ContractKey; label: string; cur: string; dest: string }[] = [
   { key: 'kernel', label: 'ядро', cur: 'CNY', dest: 'Китай' },
@@ -87,7 +96,7 @@ export function Rates() {
             unit="₽/т"
             min={0}
             max={30000}
-            source="✋ вручную, сайт МСХ"
+            source={SRC[inputs.dutySunOil.origin]}
             hint="Публикуется 1-го числа месяца."
           />
           <Field
@@ -96,12 +105,14 @@ export function Rates() {
             unit="₽/т"
             min={0}
             max={30000}
-            source="✋ вручную, сайт МСХ"
+            source={SRC[inputs.dutySunMeal.origin]}
             hint="Публикуется 1-го числа месяца."
           />
         </div>
 
-        {staleDuty ? (
+        <DutiesBlock />
+
+        {staleDuty && (
           <div className="blockbox">
             <p className="blockbox-hd">
               ⏳ Ставки заданы за {monthName(inputs.dutySunOil.month ?? '')}. Текущий месяц —{' '}
@@ -114,25 +125,11 @@ export function Rates() {
             <p className="blockbox-ok">
               ✅ Остальные считаются — у них ставка МСХ в цене не участвует.
             </p>
-            <button
-              type="button"
-              className="btn"
-              onClick={() => {
-                set('dutySunOil.month', inputs.currentMonth)
-                set('dutySunMeal.month', inputs.currentMonth)
-              }}
-            >
-              Подтвердить ставки за {monthName(inputs.currentMonth)}
-            </button>
           </div>
-        ) : (
-          <p className="okbox">✅ Ставки за текущий месяц. Все модели считаются.</p>
         )}
 
-        <p className="note">
-          Источник — сайт МСХ, смотрится глазами. Автоподтяжки нет: сервер проекта находится
-          за пределами РФ, gov.ru его не пускает. <b>Ручной ввод — штатный режим.</b>
-        </p>
+        {!staleDuty && <p className="okbox">✅ Ставки за текущий месяц. Все модели считаются.</p>}
+
       </Panel>
 
       <FxPanel />

@@ -102,8 +102,11 @@ export const BASE: Inputs = {
   fxCny: s(11.5, 'auto'),
   fxUsd: s(80, 'auto'),
 
-  dutySunOil: s(7000, 'manual', MONTH),
-  dutySunMeal: s(1015.91, 'manual', MONTH),
+  // 'setting', а не 'manual': это РЕКОНСТРУКЦИЯ эталона (C), а не то, что
+  // кто-то ввёл сегодня. Пометка «вручную» блокировала бы автосбор навсегда —
+  // он обязан не перебивать ручной ввод, а база ручным вводом не является.
+  dutySunOil: s(7000, 'setting', MONTH),
+  dutySunMeal: s(1015.91, 'setting', MONTH),
   dutyKernelPercent: s(6.5, 'manual'),
 
   contracts: {
@@ -225,9 +228,31 @@ export function saveTouchedAt(at: string | null): void {
 
 export const baseInputs = () => clone(BASE)
 
-// ─────────────────────────────────────────────── Отличия от базы
+// ─────────────────────────────────────────────── База и рынок — разные вещи
 
-/** Путь к изменённому полю в человекочитаемом виде. */
+/**
+ * РЫНОЧНЫЕ ДАННЫЕ МЕСЯЦА — не параметры модели.
+ *
+ * Курсы и ставки пошлин приходят извне и описывают месяц, а не устройство
+ * завода. Значения этих полей в `BASE` — часть РЕКОНСТРУКЦИИ эталона (C),
+ * а не сегодняшний рынок: там пошлина на масло 7 000 ₽/т, тогда как факт
+ * августа 2026 — 7 748 ₽/т по девяти независимым источникам.
+ *
+ * Отсюда два следствия, оба намеренные:
+ *   1. «Вернуть базовые значения» эти поля НЕ трогает — иначе сброс молча
+ *      вернул бы пульт к вымышленным ставкам;
+ *   2. отличием от базы они не считаются — это не правка человека,
+ *      а состояние рынка. Их происхождение показывается отдельно.
+ *
+ * `BASE` при этом неприкосновенна: она обязана воспроизводить эталон (C)
+ * вечно, иначе сверка теряет смысл.
+ */
+export const MARKET_PATHS = ['fxCny', 'fxUsd', 'dutySunOil', 'dutySunMeal'] as const
+
+const isMarketPath = (path: string) =>
+  (MARKET_PATHS as readonly string[]).some((m) => path === m || path.startsWith(`${m}.`))
+
+/** Путь к изменённому полю в человекочитаемом виде. Рыночные данные не в счёт. */
 export function changedPaths(i: Inputs): string[] {
   const out: string[] = []
   const walk = (a: unknown, b: unknown, path: string) => {
@@ -238,11 +263,9 @@ export function changedPaths(i: Inputs): string[] {
     for (const k of Object.keys(a as Record<string, unknown>)) {
       // `at` — служебная отметка времени, отличием не считается
       if (k === 'at') continue
-      walk(
-        (a as Record<string, unknown>)[k],
-        (b as Record<string, unknown>)[k],
-        path ? `${path}.${k}` : k,
-      )
+      const next = path ? `${path}.${k}` : k
+      if (isMarketPath(next)) continue
+      walk((a as Record<string, unknown>)[k], (b as Record<string, unknown>)[k], next)
     }
   }
   walk(BASE, i, '')
@@ -253,7 +276,20 @@ export const isChanged = (i: Inputs) => changedPaths(i).length > 0
 
 /** Изменено ли конкретное поле. `path` вида 'fxCny.value' или 'models.M3.yieldKernel'. */
 export function isFieldChanged(i: Inputs, path: string): boolean {
+  if (isMarketPath(path)) return false
   const get = (o: unknown, p: string) =>
     p.split('.').reduce<unknown>((acc, k) => (acc as Record<string, unknown>)?.[k], o)
   return get(BASE, path) !== get(i, path)
+}
+
+/**
+ * Сброс к базе с сохранением рыночных данных месяца.
+ * Параметры модели возвращаются к эталону (C), курсы и ставки остаются.
+ */
+export function resetToBaseKeepingMarket(current: Inputs): Inputs {
+  const next = clone(BASE)
+  for (const p of MARKET_PATHS) {
+    next[p] = clone(current[p])
+  }
+  return next
 }

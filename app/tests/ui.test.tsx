@@ -42,6 +42,13 @@ const fieldIn = (panelTitle: string, label: string) => {
 
 const fxField = (label: string) => fieldIn('Курсы валют', label)
 
+/** Параметр модели — в отличие от курса, он и есть «правка человека». */
+const modelField = async (u: ReturnType<typeof userEvent.setup>, label: string) => {
+  const settings = screen.queryByText('Настройки расчёта — меняются редко')
+  if (settings && !(settings.parentElement as HTMLDetailsElement)?.open) await u.click(settings)
+  return screen.getByText(label).closest('label')!.querySelector('input') as HTMLInputElement
+}
+
 /**
  * Ввод значения в числовое поле.
  *
@@ -82,28 +89,42 @@ describe('Экран сравнения показывает то же, что �
 })
 
 describe('Правка параметра пересчитывает все модели немедленно', () => {
-  it('рост курса CNY меняет результат и помечает набор изменённым', async () => {
+  it('правка курса пересчитывает модели, но правкой параметров не считается', async () => {
     const u = userEvent.setup()
     render(<App />)
     await openRates(u)
 
     setValue(fxField('CNY / RUB'), '13')
 
-    // Экран сравнения обязан увидеть правку без всякой кнопки «применить».
     await u.click(screen.getByRole('button', { name: 'Сравнение' }))
-    expect(await screen.findByText('отличаются от базы')).toBeTruthy()
 
+    // Отпечаток обязан измениться — расчёт пошёл на новом курсе.
     const withFx = baseInputs()
     withFx.fxCny.value = 13
-    expect(screen.getAllByText(fingerprint(withFx)).length).toBeGreaterThan(0)
+    expect(await screen.findByText(fingerprint(withFx))).toBeTruthy()
+
+    // А вот «изменёнными» параметры не становятся: курс — данные рынка,
+    // а не правка человека.
+    expect(screen.getByText('рабочий эталон')).toBeTruthy()
   })
 
-  it('кнопка «Вернуть базовые значения» возвращает ровно эталон (C)', async () => {
+  it('правка параметра модели помечает набор изменённым', async () => {
     const u = userEvent.setup()
     render(<App />)
     await openRates(u)
 
-    setValue(fxField('CNY / RUB'), '13')
+    setValue(await modelField(u, 'суток в месяце'), '30')
+
+    await u.click(screen.getByRole('button', { name: 'Сравнение' }))
+    expect(await screen.findByText('отличаются от базы')).toBeTruthy()
+  })
+
+  it('«Вернуть базовые значения» откатывает параметры модели к эталону', async () => {
+    const u = userEvent.setup()
+    render(<App />)
+    await openRates(u)
+
+    setValue(await modelField(u, 'суток в месяце'), '30')
     expect(await screen.findByText('Внесены изменения')).toBeTruthy()
 
     await u.click(screen.getByRole('button', { name: 'Вернуть базовые значения' }))
@@ -111,6 +132,22 @@ describe('Правка параметра пересчитывает все мо
     await u.click(screen.getByRole('button', { name: 'Сравнение' }))
     expect(await screen.findByText('рабочий эталон')).toBeTruthy()
     expect(screen.getAllByText(fingerprint(BASE)).length).toBeGreaterThan(0)
+  })
+
+  it('сброс НЕ возвращает ставки месяца к реконструкции эталона', async () => {
+    const u = userEvent.setup()
+    render(<App />)
+    await openRates(u)
+
+    // Ставка месяца — как её подставил бы автосбор
+    setValue(fieldIn('Пошлины МСХ', 'подсолнечное масло'), '7748')
+    setValue(await modelField(u, 'суток в месяце'), '30')
+
+    await u.click(await screen.findByRole('button', { name: 'Вернуть базовые значения' }))
+
+    // Параметр модели откатился, ставка месяца уцелела
+    expect((await modelField(u, 'суток в месяце')).value).toBe('27')
+    expect(fieldIn('Пошлины МСХ', 'подсолнечное масло').value).toBe('7748')
   })
 })
 
@@ -120,15 +157,14 @@ describe('ФОТ и параметры расчёта не задевают др
     render(<App />)
     await openRates(u)
 
-    setValue(fxField('CNY / RUB'), '13')
+    setValue(await modelField(u, 'суток в месяце'), '30')
 
-    await u.click(screen.getByText('Настройки расчёта — меняются редко'))
     const payroll = screen.getByText('ФОТ «проект»').closest('label')!.querySelector('input')!
     await u.type(payroll, '123')
     await u.click(await screen.findByRole('button', { name: 'Очистить ФОТ' }))
 
-    // Курс остался изменённым: у ФОТ своя кнопка и своё хранилище.
-    expect(fxField('CNY / RUB').value).toBe('13')
+    // Параметр остался изменённым: у ФОТ своя кнопка и своё хранилище.
+    expect((await modelField(u, 'суток в месяце')).value).toBe('30')
   })
 
   it('общий сброс не трогает ФОТ', async () => {
@@ -140,7 +176,7 @@ describe('ФОТ и параметры расчёта не задевают др
     const payroll = screen.getByText('ФОТ «проект»').closest('label')!.querySelector('input')!
     await u.type(payroll, '123')
 
-    setValue(fxField('CNY / RUB'), '13')
+    setValue(await modelField(u, 'суток в месяце'), '30')
     await u.click(await screen.findByRole('button', { name: 'Вернуть базовые значения' }))
 
     expect((screen.getByText('ФОТ «проект»').closest('label')!.querySelector('input') as HTMLInputElement).value)
@@ -259,6 +295,9 @@ describe('Состояние обмена с сервером всегда на 
       if (path.endsWith('/params')) {
         return new Response(JSON.stringify({ inputs: null, fingerprint: null, revision: 0, updatedAt: null }), { status: 200 })
       }
+      if (path.endsWith('/duties')) {
+        return new Response(JSON.stringify({ rates: [], scannedAt: '2026-08-03T10:00:00.000Z', note: '' }), { status: 200 })
+      }
       return new Response(JSON.stringify({ entries: [], rates: {} }), { status: 200 })
     }))
 
@@ -283,6 +322,9 @@ describe('Состояние обмена с сервером всегда на 
           inputs: theirs, fingerprint: fingerprint(theirs), revision: 7,
           updatedAt: '2026-08-03T09:00:00.000Z',
         }), { status: 200 })
+      }
+      if (String(url).endsWith('/duties')) {
+        return new Response(JSON.stringify({ rates: [], scannedAt: '2026-08-03T10:00:00.000Z', note: '' }), { status: 200 })
       }
       return new Response(JSON.stringify({ entries: [], rates: {} }), { status: 200 })
     }))

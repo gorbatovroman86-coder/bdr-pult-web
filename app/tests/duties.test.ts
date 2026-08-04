@@ -9,7 +9,7 @@
 
 import { beforeEach, describe, expect, it } from 'vitest'
 // @ts-expect-error — серверные модули на чистом JS, типов у них нет намеренно
-import { implausible, looksLikeDuty, parseDuties, prevMonth, reconcile } from '../../server/src/duties.mjs'
+import { assessRate, implausible, looksLikeDuty, outOfHistoricalRange, parseDuties, prevMonth, reconcile } from '../../server/src/duties.mjs'
 // @ts-expect-error — см. выше
 import { decideDuties, handle, resetDutiesCache } from '../../server/src/routes.mjs'
 
@@ -126,8 +126,8 @@ describe('Сверка источников', () => {
   })
 })
 
-describe('Сторож неправдоподобия', () => {
-  it('рост больше чем вдвое к прошлому месяцу не применяется молча', () => {
+describe('Сторож: пока ряда мало — сравниваем с прошлым месяцем', () => {
+  it('удвоение поднимает тревогу', () => {
     expect(implausible(7748, 3294.2)).toBe(true) // настоящий скачок августа
     expect(implausible(3294.2, 7748)).toBe(true) // падение вдвое — тоже повод
     expect(implausible(7748, 7000)).toBe(false)
@@ -140,6 +140,42 @@ describe('Сторож неправдоподобия', () => {
   it('предыдущий месяц считается через границу года', () => {
     expect(prevMonth('2026-01')).toBe('2025-12')
     expect(prevMonth('2026-08')).toBe('2026-07')
+  })
+
+  it('текст тревоги не обвиняет источник в опечатке', () => {
+    const a = assessRate(7748, 3294.2, [3294.2])
+    expect(a.alarm).toBe(true)
+    expect(a.basis).toBe('double')
+    expect(a.message).toContain('плавающая')
+    expect(a.message).toContain('сверить с источником')
+    expect(a.message).not.toContain('опечат')
+  })
+})
+
+describe('Сторож: с накопленным рядом — сравниваем с историей', () => {
+  // Полгода наблюдений: ставка ходит широко, и это нормально.
+  const ряд = [0, 1015.91, 3294.2, 2100, 5400, 3294.2]
+
+  it('короткий ряд к историческому правилу не допускается', () => {
+    expect(outOfHistoricalRange(99999, [3294.2, 7748])).toBe(false)
+  })
+
+  it('кратный, но обычный для ряда скачок тревоги не поднимает', () => {
+    const a = assessRate(7748, 3294.2, ряд)
+    expect(a.alarm).toBe(false) // при коротком ряде это была бы тревога
+  })
+
+  it('значение далеко за пределами ряда — тревога по истории', () => {
+    const a = assessRate(90000, 3294.2, ряд)
+    expect(a.alarm).toBe(true)
+    expect(a.basis).toBe('history')
+    expect(a.message).toContain('накопленного ряда')
+  })
+
+  it('накопленный ряд вытесняет правило «вдвое»', () => {
+    // Ровно тот случай, который раньше давал ложную тревогу.
+    expect(assessRate(7748, 3294.2, [3294.2]).basis).toBe('double')
+    expect(assessRate(7748, 3294.2, ряд).basis).toBe(null)
   })
 })
 
@@ -166,9 +202,15 @@ describe('Решение: что применять само, а что пока
   it('подтверждённое, но выросшее вдвое — само НЕ применяется', () => {
     expect(oilAug.status).toBe('confirmed')
     expect(oilAug.previousRate).toBe(3294.2)
-    expect(oilAug.implausible).toBe(true)
+    expect(oilAug.alarm).toBe(true)
+    expect(oilAug.alarmBasis).toBe('double')
     expect(oilAug.autoApply).toBe(false)
     expect(oilAug.needsHuman).toBe(true)
+  })
+
+  it('тревога объясняет, что пошлина плавающая, а не что источник ошибся', () => {
+    expect(oilAug.alarmMessage).toContain('плавающая')
+    expect(oilAug.alarmMessage).not.toContain('опечат')
   })
 })
 

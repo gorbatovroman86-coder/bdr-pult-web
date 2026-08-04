@@ -184,3 +184,26 @@ export const apiDeleteEntry = (c: ApiConfig, id: string) =>
 
 export const apiGetFx = (c: ApiConfig) =>
   call<{ rates: Partial<Record<'CNY' | 'USD', FxRate>> }>(c, 'GET', '/fx')
+
+/** Ставка пошлины, сведённая сервером из вторичных источников. */
+export interface DutyRate {
+  month: string
+  product: 'oil' | 'meal'
+  rate: number
+  /** Каналы, подтвердившие именно это значение. */
+  sources: string[]
+  status: 'confirmed' | 'single' | 'disputed'
+  /** Все встреченные значения — спор не прячется. */
+  variants: { rate: number; sources: string[] }[]
+  firstSeenAt: string
+  previousRate: number | null
+  history: number[]
+  alarm: boolean
+  alarmBasis: 'double' | 'history' | null
+  alarmMessage: string
+  autoApply: boolean
+  needsHuman: boolean
+}
+
+export const apiGetDuties = (c: ApiConfig) =>
+  call<{ rates: DutyRate[]; scannedAt: string; note: string }>(c, 'GET', '/duties')

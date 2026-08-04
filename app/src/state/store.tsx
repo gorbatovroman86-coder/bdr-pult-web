@@ -8,8 +8,8 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import {
-  BASE, baseInputs, changedPaths, clearInputs, isFieldChanged, loadInputs, loadTouchedAt,
-  saveInputs, saveTouchedAt,
+  BASE, changedPaths, clearInputs, isFieldChanged, loadInputs, loadTouchedAt,
+  resetToBaseKeepingMarket, saveInputs, saveTouchedAt,
   type Inputs,
 } from './inputs'
 import { computeAll, type Computed } from './compute'
@@ -17,6 +17,7 @@ import { fingerprint } from './transfer'
 import { useServerSync, type SyncApi } from './useSync'
 import { useJournal, type JournalApi } from './useJournal'
 import { useFx, type FxApi } from './useFx'
+import { useDuties, type DutiesApi } from './useDuties'
 import { EMPTY_PAYROLL, loadPayroll, savePayroll, type Payroll } from '../data/payroll'
 
 interface Store {
@@ -53,6 +54,8 @@ interface Store {
   journal: JournalApi
   /** Курсы валют, подтянутые сервером. */
   fx: FxApi
+  /** Ставки пошлин, собранные сервером из вторичных источников. */
+  duties: DutiesApi
 }
 
 const Ctx = createContext<Store | null>(null)
@@ -105,9 +108,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     })
   }, [touch])
 
+  /**
+   * Сброс возвращает к эталону (C) ПАРАМЕТРЫ МОДЕЛИ. Курсы и ставки пошлин
+   * остаются: это данные месяца, а в базе на их месте лежит реконструкция
+   * эталона. Иначе сброс молча вернул бы расчёт к вымышленным ставкам.
+   */
   const resetAll = useCallback(() => {
     clearInputs()
-    setInputs(baseInputs())
+    setInputs((prev) => resetToBaseKeepingMarket(prev))
     setTouchedAt(null)
   }, [])
 
@@ -150,15 +158,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const sync = useServerSync(inputs, fp, applyInputs, touchedAt)
   const journal = useJournal(sync.config, inputs, computed, fp)
   const fx = useFx(sync.config, inputs, setAuto)
+  const duties = useDuties(sync.config, inputs, setAuto, set)
 
   const value = useMemo<Store>(
     () => ({
       inputs, computed, set, resetAll, resetField, applyInputs, setAuto, changed, isChangedField,
-      fingerprint: fp, touchedAt, payroll, setPayroll, setPayrollAll, resetPayroll, sync, journal, fx,
+      fingerprint: fp, touchedAt, payroll, setPayroll, setPayrollAll, resetPayroll, sync, journal, fx, duties,
     }),
     [
       inputs, computed, set, resetAll, resetField, applyInputs, setAuto, changed, isChangedField,
-      fp, touchedAt, payroll, setPayroll, setPayrollAll, resetPayroll, sync, journal, fx,
+      fp, touchedAt, payroll, setPayroll, setPayrollAll, resetPayroll, sync, journal, fx, duties,
     ],
   )
 
